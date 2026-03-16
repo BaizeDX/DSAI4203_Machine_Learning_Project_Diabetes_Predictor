@@ -1,0 +1,39 @@
+
+[Experiment Information]
+Experiment Name: XGBoost Default Parameters
+Date: 2026-03-15
+Model: XGBoost Classifier
+Parameters: All default (n_estimators=100, max_depth=6, learning_rate=0.1)
+
+[Results Comparison]
+- Baseline Decision Tree AUC: 0.6825
+- XGBoost Default AUC: 0.7192
+- Absolute Improvement: +0.0367
+- Relative Improvement: 5.4%
+
+[Detailed Metrics]
+- Class 0 (No Diabetes) Recall: 0.39 (finds 39% of non-diabetic cases)
+- Class 1 (Diabetes) Recall: 0.85 (finds 85% of diabetic cases)
+- Main Issue: Model still biased towards majority class
+
+[Top 5 Feature Importance]
+1. family_history_diabetes (73.9%) - Dominant feature
+2. age (4.9%) - Age
+3. physical_activity_minutes_per_week (4.3%) - Physical activity
+4. triglycerides (1.6%) - Triglycerides
+5. bmi (1.4%) - Body Mass Index
+
+[Learning Curve Analysis]
+- Validation AUC increased from 0.685 to 0.716, showing continuous upward trend
+- Curve hasn't converged at 100 rounds, indicating need for more iterations
+- Baseline model curve decreased (overfitting), while XGBoost remained stable
+
+[Problem Diagnosis]
+1. Feature Utilization: Top 3 features account for 83% of importance, underutilizing other features
+2. Class Imbalance: Large recall gap (0.39 vs 0.85)
+3. Model Capacity: 100 trees may be insufficient
+
+[Next Steps - Priority Order]
+Priority 1: Increase n_estimators to 200-300 to allow full convergence
+Priority 2: Handle class imbalance (scale_pos_weight)
+Priority 3: Tune max_depth and learning_rate
