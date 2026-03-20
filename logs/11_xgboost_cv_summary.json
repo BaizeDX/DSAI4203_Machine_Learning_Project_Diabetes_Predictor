@@ -1,0 +1,43 @@
+{
+  "experiment": "11_xgboost_cv_final",
+  "n_splits": 5,
+  "random_state": 42,
+  "fold_aucs": [
+    0.7268799222061141,
+    0.7253174103621389,
+    0.7261415919493263,
+    0.7276549511210526,
+    0.7265180884092918
+  ],
+  "mean_fold_auc": 0.7265023928095846,
+  "std_fold_auc": 0.0007753097600244129,
+  "oof_auc": 0.726498994628476,
+  "best_iterations": [
+    1587,
+    1577,
+    1668,
+    1424,
+    1424
+  ],
+  "feature_count": 29,
+  "params": {
+    "objective": "binary:logistic",
+    "eval_metric": "auc",
+    "tree_method": "hist",
+    "n_estimators": 3000,
+    "learning_rate": 0.05,
+    "max_depth": 5,
+    "min_child_weight": 5,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 2.0,
+    "early_stopping_rounds": 100
+  },
+  "improvements": [
+    "使用5折交叉验证替代固定holdout分割",
+    "保留原始特征，同时添加交互特征",
+    "使用LabelEncoder处理类别特征（兼容性更好）",
+    "用OOF AUC作为模型评估指标",
+    "早停机制防止过拟合"
+  ]
+}
