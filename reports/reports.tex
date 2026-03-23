@@ -1,5 +1,4 @@
 \documentclass[a4paper,11pt]{article}
-\usepackage[utf8]{inputenc}
 \usepackage{geometry}
 \geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
 \usepackage{amsmath,amssymb}
@@ -13,6 +12,15 @@
 \usepackage{xcolor}
 \usepackage{enumitem}
 \usepackage{multirow}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\usepackage{pifont}
+
+% 中文和特殊字符支持
+\usepackage{xeCJK}
+\setCJKmainfont{Noto Sans CJK TC}
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Termes}
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -42,8 +50,13 @@
 
 \title{Diabetes Prediction Using Machine Learning \\
 \large A Comprehensive XGBoost-Based Approach with Cross-Validation}
-\author{Your Name \\
-\texttt{student.id@university.edu}}
+
+\author{
+  {Team: 寶見叔受你一靠子(*´ $\forall$ \textasciigrave{})\textasciitilde{}\ding{170}} \\[4pt]
+  Meng Zihan \quad Huang Junhao \\[2pt]
+  \texttt{24110285d@connect.polyu.hk} \quad \texttt{24109866d@connect.polyu.hk}
+}
+
 \date{\today}
 
 \begin{document}
@@ -99,6 +112,10 @@ A dummy classifier predicting the majority class (diabetic) establishes a lower 
 \subsubsection{Decision Tree}
 A decision tree with max depth 5 serves as an interpretable baseline. It achieves an OOF AUC of 0.6825, with feature importance dominated by \texttt{family\_history\_diabetes} (44.8\%), \texttt{physical\_activity} (29.9\%), and \texttt{age} (21.8\%).
 
+\subsection{Model Selection Considerations}
+
+Before committing to XGBoost, we evaluated several candidate models. Decision tree served as our initial baseline, but its shallow depth limited its ability to capture complex feature interactions. We also experimented with K-Nearest Neighbors (KNN) and Multi-Layer Perceptron (MLP). KNN struggled with the high-dimensional feature space and large dataset size, while MLP required extensive hyperparameter tuning and was computationally expensive. XGBoost emerged as the best choice due to its ability to handle tabular data effectively, built-in regularization to prevent overfitting, and efficient handling of categorical features. The gradient boosting framework naturally captures feature interactions and provides feature importance for interpretability.
+
 \subsection{XGBoost Model Development}
 
 \subsubsection{Initial Model}
@@ -108,7 +125,9 @@ The initial XGBoost model with default parameters (100 trees, learning rate 0.1)
 Increasing tree count to 300 improves AUC to 0.7255, while further increasing to 500 yields 0.7264. Learning curves show convergence beyond 500 trees, indicating diminishing returns.
 
 \subsubsection{Feature Engineering}
-Based on clinical domain knowledge, five engineered features are added:
+Based on clinical domain knowledge, five engineered features were initially added. However, we made a critical mistake in Experiment 07: we replaced the original features with interaction features (e.g., using \texttt{age\_family\_history} while dropping \texttt{age} and \texttt{family\_history\_diabetes}). This caused information loss—when family history was zero, the interaction term became zero regardless of age. The corrected approach retains all original features while adding engineered features as supplements.
+
+The final feature set includes:
 \begin{itemize}
     \item \texttt{age\_family\_history}: interaction between age and family history
     \item \texttt{age\_bmi}: interaction between age and body mass index
@@ -119,8 +138,11 @@ Based on clinical domain knowledge, five engineered features are added:
 
 \subsection{Critical Methodological Improvements}
 
+\subsubsection{Why We Moved to Cross-Validation}
+Early experiments (Experiments 03-10) all used a single fixed validation split with \texttt{random\_state=42}. While convenient, this approach risks overfitting to that specific split. The model's hyperparameters were tuned repeatedly on the same validation set, potentially learning patterns specific to that data partition rather than general patterns. This is a classic pitfall in machine learning—tuning on a fixed holdout set can lead to optimistic performance estimates that don't generalize.
+
 \subsubsection{From Fixed Holdout to Cross-Validation}
-Early experiments used a single fixed validation split (random\_state=42). This approach risks overfitting to that specific split. The final pipeline employs 5-fold stratified cross-validation, ensuring each sample is validated exactly once.
+To address this, the final pipeline employs 5-fold stratified cross-validation. The data is randomly partitioned into 5 folds while preserving class distribution. Each fold serves as the validation set exactly once, with the remaining 4 folds used for training. This ensures every sample is validated exactly once, providing a more realistic estimate of generalization performance.
 
 \subsubsection{Fold-Wise Categorical Encoding}
 To prevent data leakage, categorical encoding is performed within each fold:
@@ -134,10 +156,10 @@ def _encode_categorical_fold(X_train_raw, X_valid_raw, categorical_cols):
 \end{lstlisting}
 
 \subsubsection{Out-of-Fold Evaluation}
-OOF (Out-of-Fold) predictions collect validation predictions from all folds, providing an unbiased estimate of generalization performance.
+OOF (Out-of-Fold) predictions collect validation predictions from all folds, providing an unbiased estimate of generalization performance. Each sample's OOF prediction comes from a model that never saw it during training.
 
 \subsubsection{Early Stopping}
-Training stops when validation AUC fails to improve for 100 consecutive rounds, automatically determining optimal tree count.
+Training stops when validation AUC fails to improve for 100 consecutive rounds, automatically determining optimal tree count and preventing overfitting.
 
 \subsection{Final Model Architecture}
 The final XGBoost model uses optimized hyperparameters:
@@ -150,6 +172,77 @@ The final XGBoost model uses optimized hyperparameters:
     \item \texttt{gamma}: 1 (split regularization)
     \item \texttt{reg\_alpha}: 0.1, \texttt{reg\_lambda}: 1 (L1/L2 regularization)
 \end{itemize}
+
+\subsection{From Notebook to Modular Pipeline}
+
+After validating the methodology in Experiment 11 (notebook version), we refactored the code into a modular Python package (\texttt{src/}). This transition was driven by several key advantages:
+
+\subsubsection{Reproducibility}
+The module version ensures consistent results across runs. Running \texttt{python -m src.train\_xgb\_cv} produces identical outputs regardless of the environment, eliminating manual notebook execution errors.
+
+\subsubsection{Verification}
+We verified that the module produces exactly the same results as the notebook:
+
+\begin{table}[H]
+\centering
+\caption{Notebook vs Module Verification}
+\label{tab:verification}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Metric} & \textbf{Notebook (Exp 11)} & \textbf{Module} \\
+\midrule
+Fold 1 AUC & 0.72596 & 0.72596 \\
+Fold 2 AUC & 0.72428 & 0.72428 \\
+Fold 3 AUC & 0.72515 & 0.72515 \\
+Fold 4 AUC & 0.72675 & 0.72675 \\
+Fold 5 AUC & 0.72591 & 0.72591 \\
+Mean AUC & 0.72561 & 0.72561 \\
+OOF AUC & 0.72560 & 0.72560 \\
+Top Feature & family\_history\_diabetes (42.7\%) & Identical \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Advantages of Modular Design}
+
+The module architecture provides several benefits over the notebook-only approach:
+
+\begin{enumerate}
+    \item \textbf{Separation of Concerns}: Each file handles a specific responsibility—\texttt{config.py} manages paths and parameters, \texttt{features.py} handles feature engineering, \texttt{models.py} contains training logic. This makes the code easier to understand and maintain.
+    
+    \item \textbf{Reusability}: Functions can be imported and reused across different experiments without code duplication. The same feature engineering pipeline can be applied to both training and test data consistently.
+    
+    \item \textbf{Testability}: Individual components can be tested in isolation. For example, we can verify that \texttt{add\_engineered\_features()} produces the expected columns without running the full training pipeline.
+    
+    \item \textbf{Command-Line Interface}: The module can be executed from the terminal, making it suitable for automated workflows and batch experiments.
+    
+    \item \textbf{Version Control}: Changes are tracked more cleanly in modular code than in monolithic notebooks. Git diffs are more meaningful when modifications are confined to specific files.
+    
+    \item \textbf{Documentation}: Each function has a clear docstring, making the code self-documenting and easier for collaborators to understand.
+\end{enumerate}
+
+\subsection{Module Structure}
+
+The final module is organized as:
+
+\begin{lstlisting}[language=bash]
+src/
+├── __init__.py              # Package initialization
+├── config.py                # Paths, constants, hyperparameters
+├── features.py              # Feature engineering functions
+├── preprocessing.py         # Data cleaning and encoding
+├── models.py                # Model training with CV logic
+├── train_xgb_cv.py          # Main entry point
+├── evaluate.py              # Evaluation utilities
+└── utils.py                 # Helper functions
+\end{lstlisting}
+
+Running the main entry point:
+\begin{lstlisting}[language=bash]
+python -m src.train_xgb_cv
+\end{lstlisting}
+
+This executes the complete pipeline: data loading, feature engineering, baseline evaluation, XGBoost CV training, and submission generation.
 
 \section{Experimental Results}
 
@@ -266,13 +359,15 @@ The slight drop from CV AUC (0.7256) to test score (0.6956) is expected due to t
 \subsection{Key Findings}
 
 \begin{enumerate}
-    \item \textbf{Cross-validation is essential}: The transition from fixed holdout to 5-fold CV revealed consistent performance, eliminating overfitting concerns.
+    \item \textbf{Cross-validation is essential}: The transition from fixed holdout to 5-fold CV revealed consistent performance, eliminating overfitting concerns. The low standard deviation (0.0008) across folds confirms that our performance estimates are reliable.
     
-    \item \textbf{Feature engineering adds value}: Domain-informed features like \texttt{cardio\_risk\_score} entered the top 5 importance rankings, validating the approach.
+    \item \textbf{Feature engineering adds value}: Domain-informed features like \texttt{cardio\_risk\_score} entered the top 5 importance rankings, validating the approach. However, we learned that replacing original features with interactions (as in Experiment 07) causes information loss—interactions should supplement, not replace.
     
-    \item \textbf{Interaction effects matter}: The \texttt{age\_family\_history} interaction contributes nearly as much as the original family history feature, indicating non-linear relationships.
+    \item \textbf{Interaction effects matter}: The \texttt{age\_family\_history} interaction contributes nearly as much as the original family history feature, indicating non-linear relationships that simple linear models would miss.
     
-    \item \textbf{Model stability}: Low CV variance (0.0008) confirms the model's generalization capability.
+    \item \textbf{Model stability}: Low CV variance (0.0008) confirms the model's generalization capability, and the close alignment between mean CV AUC (0.7256) and OOF AUC (0.7256) indicates robust evaluation.
+    
+    \item \textbf{Modular design improves reproducibility}: The transition from notebook to modular Python package produced identical results while enabling easier maintenance, testing, and automation.
 \end{enumerate}
 
 \subsection{Lessons Learned}
@@ -283,6 +378,8 @@ The slight drop from CV AUC (0.7256) to test score (0.6956) is expected due to t
     \item Fold-wise categorical encoding preventing data leakage
     \item Early stopping for automatic model complexity control
     \item Domain-informed feature engineering
+    \item Retaining original features while adding interactions
+    \item Modular code architecture for reproducibility
 \end{itemize}
 
 \subsubsection{What Could Be Improved}
@@ -295,7 +392,9 @@ The slight drop from CV AUC (0.7256) to test score (0.6956) is expected due to t
 
 \section{Conclusion}
 
-This project developed a systematic machine learning pipeline for diabetes prediction, progressing from simple baselines to an optimized XGBoost model with proper cross-validation. The final model achieves a mean CV AUC of 0.7256 with low variance (0.0008), demonstrating stable generalization. Key methodological contributions include fold-wise categorical encoding, out-of-fold evaluation, and early stopping for automatic model selection. The complete pipeline is implemented in a modular Python package, ensuring reproducibility.
+This project developed a systematic machine learning pipeline for diabetes prediction, progressing from simple baselines to an optimized XGBoost model with proper cross-validation. The final model achieves a mean CV AUC of 0.7256 with low variance (0.0008), demonstrating stable generalization. Key methodological contributions include fold-wise categorical encoding, out-of-fold evaluation, and early stopping for automatic model selection.
+
+The pipeline was successfully refactored from a notebook into a modular Python package (\texttt{src/}), with verification confirming identical results. This modular design improves reproducibility, maintainability, and reusability—essential qualities for production-ready machine learning systems.
 
 The project highlights the importance of rigorous evaluation protocols in machine learning and demonstrates how domain knowledge can be effectively integrated through feature engineering. While the Kaggle test score (0.6956) is slightly lower than CV performance due to data distribution shifts, the model's consistent cross-validation results and stable performance across folds provide confidence in its generalization capability.
 
@@ -308,6 +407,7 @@ machinelearning_project/
 ├── data/                    # Dataset files
 ├── notebooks/               # Jupyter notebooks (EDA, experiments)
 ├── src/                     # Python source code
+│   ├── __init__.py         # Package initialization
 │   ├── config.py           # Configuration and paths
 │   ├── features.py         # Feature engineering
 │   ├── preprocessing.py    # Data preprocessing
@@ -320,18 +420,10 @@ machinelearning_project/
 └── figures/                 # Generated plots
 \end{lstlisting}
 
-\section*{References}
+The repository includes all code to reproduce the experiments and final results. To run the complete pipeline:
 
-\begin{enumerate}
-    \item Chen, T., \& Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. In Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining.
-    
-    \item Kaggle. (2024). Diabetes Prediction Challenge. \url{https://www.kaggle.com/competitions/diabetes-prediction-challenge}
-    
-    \item American Diabetes Association. (2023). Standards of Medical Care in Diabetes.
-    
-    \item Kohavi, R. (1995). A Study of Cross-Validation and Bootstrap for Accuracy Estimation and Model Selection. IJCAI.
-    
-    \item Lundberg, S. M., \& Lee, S. I. (2017). A Unified Approach to Interpreting Model Predictions. NeurIPS.
-\end{enumerate}
+\begin{lstlisting}[language=bash]
+python -m src.train_xgb_cv
+\end{lstlisting}
 
 \end{document}
