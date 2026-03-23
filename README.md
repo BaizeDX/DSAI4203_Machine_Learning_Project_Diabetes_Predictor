@@ -1,4 +1,3 @@
-# DSAI4203_MachineLearning_Project```markdown
 # Diabetes Prediction Using Machine Learning
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
@@ -46,7 +45,8 @@ machinelearning_project/
 │   ├── evaluate.py                # Evaluation utilities
 │   └── utils.py                   # Helper functions
 │
-├── models/                         # Saved models
+├── models/
+│   ├── 04-08_xgboost_test_*.pkl   # Saved models in previous labs
 │   └── xgb_cv_final/              # 5 fold models
 │       ├── xgb_fold_1.json
 │       ├── xgb_fold_2.json
@@ -71,36 +71,6 @@ machinelearning_project/
 │   └── feature_importance.png
 │
 └── requirements.txt               # Python dependencies
-```
-
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/diabetes-prediction.git
-cd diabetes-prediction
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### Run the Complete Pipeline
-
-```bash
-# Run the main training script
-python -m src.train_xgb_cv
-```
-
-### Run Individual Notebooks
-
-```bash
-# Start Jupyter notebook
-jupyter notebook notebooks/
-
-# Or run specific notebook
-jupyter notebook notebooks/11_xgboost_cv_final.ipynb
 ```
 
 ## 📊 Data Exploration
@@ -294,14 +264,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Dataset provided by Kaggle's Tabular Playground Series
 - Inspired by the Diabetes Health Indicators Dataset
 - XGBoost library by Tianqi Chen and contributors
-
-## 📧 Contact
-
-For questions or feedback, please open an issue or contact:
-- Email: your.email@university.edu
-- GitHub: [@yourusername](https://github.com/yourusername)
-
----
-
-## ⭐ If you find this project useful, please consider giving it a star!
-```
