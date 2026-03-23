@@ -255,10 +255,6 @@ lightgbm>=3.3.0
 - 🔄 SHAP analysis for interpretability
 - 🔄 Neural network architectures
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🙏 Acknowledgments
 
 - Dataset provided by Kaggle's Tabular Playground Series
