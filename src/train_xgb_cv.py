@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
-import json  # 添加 json 导入
+import json
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -15,7 +15,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 # Import from src
 from src.config import (
-    DATA_DIR, SUBMISSION_DIR, LOG_DIR, FIGURE_DIR,
+    DATA_DIR, SUBMISSION_DIR, LOG_DIR,
     RANDOM_STATE, N_SPLITS, ExperimentConfig
 )
 from src.features import add_engineered_features
@@ -23,7 +23,6 @@ from src.models import (
     run_xgb_cv, run_all_baselines,
     create_comparison_table
 )
-from src.preprocessing import encode_categorical
 
 warnings.filterwarnings('ignore')
 
@@ -42,7 +41,13 @@ def load_data():
 
 
 def prepare_features(train_df, test_df, config=None):
-    """Prepare features for modeling."""
+    """
+    Prepare features for modeling WITHOUT global encoding.
+    
+    🔴 IMPORTANT: No global LabelEncoder here!
+    Categorical encoding is done INSIDE each fold by models.py
+    to prevent data leakage.
+    """
     if config is None:
         config = ExperimentConfig()
     
@@ -60,14 +65,19 @@ def prepare_features(train_df, test_df, config=None):
     X_test = add_engineered_features(X_test, config)
     print(f"   After feature engineering: {X.shape[1]}")
     
-    # Encode categorical features
+    # 🔴 NO GLOBAL ENCODING!
+    # Keep categorical columns as strings for fold-wise encoding
     categorical_cols = ['gender', 'ethnicity', 'education_level',
                         'income_level', 'smoking_status', 'employment_status']
     
-    X = encode_categorical(X, categorical_cols)
-    X_test = encode_categorical(X_test, categorical_cols)
+    # Ensure categorical columns are strings (no encoding yet)
+    for col in categorical_cols:
+        if col in X.columns:
+            X[col] = X[col].astype(str).fillna('Unknown')
+            X_test[col] = X_test[col].astype(str).fillna('Unknown')
     
-    print(f"   After encoding: {X.shape[1]}")
+    print(f"   Features ready (categorical encoding will be done per fold)")
+    print(f"   Feature count: {X.shape[1]}")
     
     return X, y, X_test, categorical_cols
 
@@ -95,10 +105,16 @@ def validate_submission_predictions(predictions, sample_sub, pred_col):
     return True
 
 
-def save_final_results(artifacts, submission_df, pred_col):
-    """Save final results to submissions/ and logs/."""
-    from src.config import SUBMISSION_DIR, LOG_DIR
+def save_final_results(artifacts, submission_df, pred_col, train_df, y_true):
+    """
+    Save final results to submissions/ and logs/.
     
+    Saves:
+    - submissions/final_submission.csv (Kaggle submission)
+    - logs/feature_importance.csv (for report)
+    - logs/summary.json (for report)
+    - logs/oof_predictions.csv (for report)
+    """
     # 1. Save Kaggle submission (final_submission.csv)
     submission = submission_df.copy()
     submission[pred_col] = artifacts.test_pred
@@ -125,8 +141,13 @@ def save_final_results(artifacts, submission_df, pred_col):
     print(f"✓ Summary saved: {LOG_DIR / 'summary.json'}")
     
     # 4. Save OOF predictions
-    # Note: artifacts.oof_pred doesn't have id mapping, we need y_true
-    # This is handled in main() separately
+    oof_df = pd.DataFrame({
+        'id': train_df['id'],
+        'y_true': y_true,
+        'y_pred': artifacts.oof_pred
+    })
+    oof_df.to_csv(LOG_DIR / 'oof_predictions.csv', index=False)
+    print(f"✓ OOF predictions saved: {LOG_DIR / 'oof_predictions.csv'}")
 
 
 def main():
@@ -138,7 +159,7 @@ def main():
     # 1. Load data
     train_df, test_df, sample_sub = load_data()
     
-    # 2. Prepare features
+    # 2. Prepare features (NO GLOBAL ENCODING)
     X, y, X_test, categorical_cols = prepare_features(train_df, test_df)
     
     # 3. Run baseline models
@@ -149,7 +170,7 @@ def main():
         random_state=RANDOM_STATE
     )
     
-    # 4. Run XGBoost with CV
+    # 4. Run XGBoost with CV (fold-wise encoding inside)
     print("\n4. Running XGBoost with 5-fold CV...")
     artifacts = run_xgb_cv(
         X, y, X_test, categorical_cols,
@@ -172,18 +193,9 @@ def main():
     pred_col = sample_sub.columns[1]
     
     if validate_submission_predictions(artifacts.test_pred, sample_sub, pred_col):
-        save_final_results(artifacts, sample_sub, pred_col)
+        save_final_results(artifacts, sample_sub, pred_col, train_df, y)
     
-    # 7. Save OOF predictions (for analysis)
-    oof_df = pd.DataFrame({
-        'id': train_df['id'],
-        'y_true': y,
-        'y_pred': artifacts.oof_pred
-    })
-    oof_df.to_csv(LOG_DIR / 'oof_predictions.csv', index=False)
-    print(f"✓ OOF predictions saved: {LOG_DIR / 'oof_predictions.csv'}")
-    
-    # 8. Print final summary
+    # 7. Print final summary
     print("\n" + "=" * 60)
     print("FINAL SUMMARY")
     print("=" * 60)
@@ -203,7 +215,8 @@ Top 5 Features:
     for i, row in artifacts.feature_importance.head(5).iterrows():
         print(f"   {i+1}. {row['feature']}: {row['importance']:.4f}")
     
-    print(f"\n✓ Submission file: {SUBMISSION_DIR / 'final_submission.csv'}")
+    print(f"\n✓ Kaggle submission: {SUBMISSION_DIR / 'final_submission.csv'}")
+    print(f"✓ Report files saved to: {LOG_DIR}")
     print("=" * 60)
     print("Done!")
 

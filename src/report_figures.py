@@ -23,7 +23,6 @@ warnings.filterwarnings('ignore')
 
 PROJECT_ROOT = Path(__file__).parent.parent
 LOG_DIR = PROJECT_ROOT / 'logs'
-SUBMISSION_DIR = PROJECT_ROOT / 'submissions'
 FIGURE_DIR = PROJECT_ROOT / 'report_figures'
 
 FIGURE_DIR.mkdir(parents=True, exist_ok=True)
@@ -38,18 +37,10 @@ print(f"Saving figures to: {FIGURE_DIR}")
 # Load results (from main pipeline)
 # ============================================================
 
-# 主入口生成的文件（保存在 submissions/ 目录）
-summary_path = SUBMISSION_DIR / 'summary.json'
-feat_imp_path = SUBMISSION_DIR / 'feature_importance.csv'
-oof_path = LOG_DIR / 'oof_predictions.csv'  # OOF 仍在 logs/
+summary_path = LOG_DIR / 'summary.json'
+feat_imp_path = LOG_DIR / 'feature_importance.csv'
+oof_path = LOG_DIR / 'oof_predictions.csv'
 
-# 如果 submissions/ 没有，则尝试 logs/
-if not summary_path.exists():
-    summary_path = LOG_DIR / 'summary.json'
-if not feat_imp_path.exists():
-    feat_imp_path = LOG_DIR / 'feature_importance.csv'
-
-# 检查文件是否存在
 missing = []
 if not summary_path.exists():
     missing.append(str(summary_path))
@@ -72,31 +63,21 @@ with open(summary_path, 'r', encoding='utf-8') as f:
 feature_importance = pd.read_csv(feat_imp_path)
 oof_df = pd.read_csv(oof_path)
 
-# 提取数据
+# Extract data
 fold_aucs = summary.get('fold_aucs', summary.get('fold_scores', []))
 mean_auc = summary.get('mean_fold_auc', np.mean(fold_aucs))
 std_auc = summary.get('std_fold_auc', np.std(fold_aucs))
-oof_auc = summary.get('oof_auc', 0)
 
-# 从 oof_df 获取真实值和预测值
-if 'y_true' in oof_df.columns and 'y_pred' in oof_df.columns:
-    y_true = oof_df['y_true'].values
-    y_pred = oof_df['y_pred'].values
-elif 'y_true' in oof_df.columns and 'oof_pred' in oof_df.columns:
-    y_true = oof_df['y_true'].values
-    y_pred = oof_df['oof_pred'].values
-else:
-    # 尝试从列名推断
-    y_true = oof_df.iloc[:, 0].values
-    y_pred = oof_df.iloc[:, -1].values
+y_true = oof_df['y_true'].values
+y_pred = oof_df['y_pred'].values
 
 print(f"✓ Fold AUCs: {fold_aucs}")
 print(f"✓ Mean AUC: {mean_auc:.6f}")
 print(f"✓ Std AUC: {std_auc:.6f}")
-print(f"✓ OOF AUC: {oof_auc:.6f}")
+print(f"✓ OOF AUC: {summary.get('oof_auc', 0):.6f}")
 
 # ============================================================
-# 设置全局绘图样式
+# Figure settings
 # ============================================================
 
 plt.style.use('default')
@@ -110,7 +91,7 @@ plt.rcParams['savefig.bbox'] = 'tight'
 # ============================================================
 # Figure 1: Cross-Validation Fold AUCs
 # ============================================================
-print("\n[1/8] Generating CV fold AUC chart...")
+print("\n[1/7] Generating CV fold AUC chart...")
 
 fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -144,7 +125,7 @@ print(f"   Saved: {FIGURE_DIR / '01_cv_fold_aucs.png'}")
 # ============================================================
 # Figure 2: Feature Importance (Top 15)
 # ============================================================
-print("\n[2/8] Generating feature importance chart...")
+print("\n[2/7] Generating feature importance chart...")
 
 fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -173,7 +154,7 @@ print(f"   Saved: {FIGURE_DIR / '02_feature_importance.png'}")
 # ============================================================
 # Figure 3: Feature Importance Pie Chart (Top 5)
 # ============================================================
-print("\n[3/8] Generating feature importance pie chart...")
+print("\n[3/7] Generating feature importance pie chart...")
 
 fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -197,7 +178,7 @@ print(f"   Saved: {FIGURE_DIR / '03_feature_importance_pie.png'}")
 # ============================================================
 # Figure 4: ROC Curve
 # ============================================================
-print("\n[4/8] Generating ROC curve...")
+print("\n[4/7] Generating ROC curve...")
 
 fpr, tpr, _ = roc_curve(y_true, y_pred)
 roc_auc = auc(fpr, tpr)
@@ -223,7 +204,7 @@ print(f"   Saved: {FIGURE_DIR / '04_roc_curve.png'}")
 # ============================================================
 # Figure 5: Prediction Distribution
 # ============================================================
-print("\n[5/8] Generating prediction distribution chart...")
+print("\n[5/7] Generating prediction distribution chart...")
 
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
@@ -256,95 +237,9 @@ plt.savefig(FIGURE_DIR / '05_prediction_distribution.pdf')
 print(f"   Saved: {FIGURE_DIR / '05_prediction_distribution.png'}")
 
 # ============================================================
-# Figure 6: Experiment Progress (requires manual data)
+# Figure 6: AUC Boxplot
 # ============================================================
-print("\n[6/8] Generating experiment progress chart...")
-
-# 实验数据（需要手动更新）
-experiments = {
-    '03_xgboost_default': 0.7192,
-    '04_xgboost_300trees': 0.7255,
-    '05_xgboost_500trees': 0.7264,
-    '06_xgboost_feat_eng': 0.7251,
-    '07_xgboost_feat_sel': 0.7251,
-    '08_lightgbm': 0.7248,
-    '09_ensemble': 0.7256,
-    '11_xgboost_cv': mean_auc
-}
-
-order = ['03_xgboost_default', '04_xgboost_300trees', '05_xgboost_500trees',
-         '06_xgboost_feat_eng', '07_xgboost_feat_sel', '08_lightgbm',
-         '09_ensemble', '11_xgboost_cv']
-
-exp_names = [n for n in order if n in experiments]
-exp_aucs = [experiments[n] for n in exp_names]
-labels = ['03\nDefault', '04\n300t', '05\n500t', 
-          '06\nFeat Eng', '07\nFeat Sel', '08\nLGBM',
-          '09\nEnsemble', '11\nCV Final']
-
-fig, ax = plt.subplots(figsize=(12, 6))
-
-colors = ['lightgray'] * (len(exp_aucs) - 1) + ['gold']
-bars = ax.bar(range(len(exp_aucs)), exp_aucs, color=colors, edgecolor='black')
-
-for i, (bar, auc_val) in enumerate(zip(bars, exp_aucs)):
-    height = bar.get_height()
-    ax.text(bar.get_x() + bar.get_width()/2., height + 0.0003,
-            f'{auc_val:.4f}', ha='center', va='bottom', fontsize=9)
-
-ax.set_xticks(range(len(exp_aucs)))
-ax.set_xticklabels(labels, fontsize=10)
-ax.set_ylabel('AUC', fontsize=12)
-ax.set_xlabel('Experiment', fontsize=12)
-ax.set_title('Model Performance Progress', fontsize=14)
-ax.set_ylim(0.718, 0.728)
-ax.axhline(y=0.7264, color='gray', linestyle='--', alpha=0.7, label='05 Baseline')
-ax.legend()
-ax.grid(True, alpha=0.3, axis='y')
-
-plt.tight_layout()
-plt.savefig(FIGURE_DIR / '06_experiment_progress.png')
-plt.savefig(FIGURE_DIR / '06_experiment_progress.pdf')
-print(f"   Saved: {FIGURE_DIR / '06_experiment_progress.png'}")
-
-# ============================================================
-# Figure 7: Learning Curves
-# ============================================================
-print("\n[7/8] Generating learning curves...")
-
-fig, ax = plt.subplots(figsize=(10, 6))
-
-best_iters = summary.get('best_iterations', [1500, 1500, 1500, 1500, 1500])
-fold_aucs = summary.get('fold_aucs', summary.get('fold_scores', []))
-
-max_iter = max(best_iters) if best_iters else 2000
-iterations = np.arange(0, max_iter + 50, 50)
-
-for i, (best_iter, final_auc) in enumerate(zip(best_iters, fold_aucs), 1):
-    start_auc = 0.68
-    k = 0.005
-    aucs = start_auc + (final_auc - start_auc) / (1 + np.exp(-k * (iterations - best_iter/2)))
-    aucs = np.minimum(aucs, final_auc)
-    mask = iterations <= best_iter
-    ax.plot(iterations[mask], aucs[mask], linewidth=1.5, 
-            label=f'Fold {i} (best: {best_iter} trees)')
-
-ax.set_xlabel('Number of Trees', fontsize=12)
-ax.set_ylabel('Validation AUC', fontsize=12)
-ax.set_title('Learning Curves - 5-Fold Cross Validation', fontsize=14)
-ax.set_ylim(0.68, 0.73)
-ax.legend(loc='lower right', fontsize=9)
-ax.grid(True, alpha=0.3)
-
-plt.tight_layout()
-plt.savefig(FIGURE_DIR / '07_learning_curves.png')
-plt.savefig(FIGURE_DIR / '07_learning_curves.pdf')
-print(f"   Saved: {FIGURE_DIR / '07_learning_curves.png'}")
-
-# ============================================================
-# Figure 8: AUC Boxplot
-# ============================================================
-print("\n[8/8] Generating AUC boxplot...")
+print("\n[6/7] Generating AUC boxplot...")
 
 fig, ax = plt.subplots(figsize=(8, 6))
 
@@ -364,9 +259,9 @@ ax.set_ylim(min(fold_aucs) - 0.002, max(fold_aucs) + 0.002)
 ax.grid(True, alpha=0.3, axis='y')
 
 plt.tight_layout()
-plt.savefig(FIGURE_DIR / '08_auc_boxplot.png')
-plt.savefig(FIGURE_DIR / '08_auc_boxplot.pdf')
-print(f"   Saved: {FIGURE_DIR / '08_auc_boxplot.png'}")
+plt.savefig(FIGURE_DIR / '06_auc_boxplot.png')
+plt.savefig(FIGURE_DIR / '06_auc_boxplot.pdf')
+print(f"   Saved: {FIGURE_DIR / '06_auc_boxplot.png'}")
 
 # ============================================================
 # Summary
@@ -380,3 +275,5 @@ for f in sorted(FIGURE_DIR.glob('*.png')):
     print(f"  - {f.name}")
 
 print("\n✅ Done! You can now use these images in your report.")
+print("\n📌 Note: Experiment progress and learning curves are not included")
+print("   because they require data not saved by the main pipeline.")

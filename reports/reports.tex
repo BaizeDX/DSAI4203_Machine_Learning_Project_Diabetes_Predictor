@@ -15,9 +15,7 @@
 \usepackage{fontspec}
 \usepackage{xeCJK}
 \usepackage{pifont}
-\usepackage{xeCJK}
 \setCJKmainfont{Noto Sans CJK TC}
-\usepackage{fontspec}
 \setmainfont{TeX Gyre Termes}
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -271,6 +269,15 @@ Fold 5 & 0.72591 & 1999 \\
 
 The low standard deviation (0.00084) indicates consistent performance across folds, demonstrating strong generalization capability.
 
+Figure \ref{fig:fold_aucs} visualizes the AUC scores across all folds.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{report_figures/01_cv_fold_aucs.png}
+\caption{5-Fold Cross-Validation AUC Scores}
+\label{fig:fold_aucs}
+\end{figure}
+
 \subsection{Model Comparison}
 
 Table \ref{tab:comparison} compares all models using the same CV protocol.
@@ -298,7 +305,7 @@ Figure \ref{fig:feature_importance} displays the top 15 feature importances from
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{report_figures/02_feature_importance.png}
+\includegraphics[width=0.7\textwidth]{report_figures/02_feature_importance.png}
 \caption{Top 15 Feature Importance}
 \label{fig:feature_importance}
 \end{figure}
@@ -311,6 +318,15 @@ The top 5 features and their importance scores are:
     \item \texttt{cardio\_risk\_score}: 4.6\%
     \item \texttt{physical\_activity\_minutes\_per\_week}: 3.5\%
 \end{enumerate}
+
+Figure \ref{fig:feature_pie} shows the distribution of feature importance for the top 5 features.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{report_figures/03_feature_importance_pie.png}
+\caption{Feature Importance Distribution (Top 5)}
+\label{fig:feature_pie}
+\end{figure}
 
 \textbf{Key insights:}
 \begin{itemize}
@@ -340,6 +356,17 @@ Figure \ref{fig:distribution} shows the prediction distributions for diabetic an
 \includegraphics[width=0.8\textwidth]{report_figures/05_prediction_distribution.png}
 \caption{Prediction Distribution by Class}
 \label{fig:distribution}
+\end{figure}
+
+\subsection{Model Stability}
+
+Figure \ref{fig:boxplot} shows the distribution of fold AUC scores, confirming the model's stability.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{report_figures/06_auc_boxplot.png}
+\caption{Distribution of Fold AUC Scores}
+\label{fig:boxplot}
 \end{figure}
 
 \subsection{Kaggle Submission Results}
@@ -425,4 +452,3 @@ python -m src.train_xgb_cv
 \end{lstlisting}
 
 \end{document}
-```

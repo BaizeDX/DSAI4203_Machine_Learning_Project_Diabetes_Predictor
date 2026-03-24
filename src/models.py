@@ -69,6 +69,8 @@ def build_decision_tree_model(seed: int = RANDOM_STATE) -> DecisionTreeClassifie
     return DecisionTreeClassifier(max_depth=5, random_state=seed)
 
 
+# src/models.py - _encode_categorical_fold 函数（已存在，确保正确）
+
 def _encode_categorical_fold(
     X_train_raw: pd.DataFrame,
     X_valid_raw: pd.DataFrame,
@@ -86,7 +88,7 @@ def _encode_categorical_fold(
             continue
 
         le = LabelEncoder()
-        # Fit on fold-train only
+        # 🔴 关键：只 fit fold-train
         X_train_encoded[col] = le.fit_transform(X_train_encoded[col].astype(str))
 
         # Transform fold-valid
