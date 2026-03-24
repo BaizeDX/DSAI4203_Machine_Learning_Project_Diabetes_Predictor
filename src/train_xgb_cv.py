@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+import json  # 添加 json 导入
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -20,7 +21,7 @@ from src.config import (
 from src.features import add_engineered_features
 from src.models import (
     run_xgb_cv, run_all_baselines,
-    create_comparison_table, save_xgb_results
+    create_comparison_table
 )
 from src.preprocessing import encode_categorical
 
@@ -94,6 +95,40 @@ def validate_submission_predictions(predictions, sample_sub, pred_col):
     return True
 
 
+def save_final_results(artifacts, submission_df, pred_col):
+    """Save final results to submissions/ and logs/."""
+    from src.config import SUBMISSION_DIR, LOG_DIR
+    
+    # 1. Save Kaggle submission (final_submission.csv)
+    submission = submission_df.copy()
+    submission[pred_col] = artifacts.test_pred
+    submission_path = SUBMISSION_DIR / "final_submission.csv"
+    submission.to_csv(submission_path, index=False)
+    print(f"✓ Kaggle submission saved: {submission_path}")
+    
+    # 2. Save feature importance
+    artifacts.feature_importance.to_csv(LOG_DIR / "feature_importance.csv", index=False)
+    print(f"✓ Feature importance saved: {LOG_DIR / 'feature_importance.csv'}")
+    
+    # 3. Save summary JSON for report
+    summary = {
+        'fold_aucs': artifacts.fold_scores,
+        'mean_fold_auc': artifacts.mean_auc,
+        'std_fold_auc': artifacts.std_auc,
+        'oof_auc': artifacts.oof_auc,
+        'best_iterations': artifacts.best_iterations,
+        'top_features': artifacts.feature_importance.head(10).to_dict('records')
+    }
+    
+    with open(LOG_DIR / "summary.json", "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    print(f"✓ Summary saved: {LOG_DIR / 'summary.json'}")
+    
+    # 4. Save OOF predictions
+    # Note: artifacts.oof_pred doesn't have id mapping, we need y_true
+    # This is handled in main() separately
+
+
 def main():
     """Main training pipeline."""
     print("=" * 60)
@@ -137,8 +172,7 @@ def main():
     pred_col = sample_sub.columns[1]
     
     if validate_submission_predictions(artifacts.test_pred, sample_sub, pred_col):
-        # Save using the save function
-        save_xgb_results(artifacts, sample_sub, pred_col, SUBMISSION_DIR)
+        save_final_results(artifacts, sample_sub, pred_col)
     
     # 7. Save OOF predictions (for analysis)
     oof_df = pd.DataFrame({
@@ -169,7 +203,7 @@ Top 5 Features:
     for i, row in artifacts.feature_importance.head(5).iterrows():
         print(f"   {i+1}. {row['feature']}: {row['importance']:.4f}")
     
-    print(f"\n✓ Submission file: {SUBMISSION_DIR / '11_xgboost_cv_submission.csv'}")
+    print(f"\n✓ Submission file: {SUBMISSION_DIR / 'final_submission.csv'}")
     print("=" * 60)
     print("Done!")
 

@@ -1,0 +1,61 @@
+{
+  "fold_aucs": [
+    0.7259607017518144,
+    0.7242820168772737,
+    0.725152857752661,
+    0.7267482782564978,
+    0.7259114989066395
+  ],
+  "mean_fold_auc": 0.7256110707089773,
+  "std_fold_auc": 0.0008345158087305099,
+  "oof_auc": 0.7256043968112144,
+  "best_iterations": [
+    1993,
+    1997,
+    1999,
+    1998,
+    1999
+  ],
+  "top_features": [
+    {
+      "feature": "family_history_diabetes",
+      "importance": 0.4270536184310913
+    },
+    {
+      "feature": "age_family_history",
+      "importance": 0.29445865750312805
+    },
+    {
+      "feature": "age_bmi",
+      "importance": 0.069193547219038
+    },
+    {
+      "feature": "cardio_risk_score",
+      "importance": 0.04559520073235035
+    },
+    {
+      "feature": "physical_activity_minutes_per_week",
+      "importance": 0.03515188917517662
+    },
+    {
+      "feature": "age",
+      "importance": 0.015728092938661575
+    },
+    {
+      "feature": "triglycerides",
+      "importance": 0.011646192893385887
+    },
+    {
+      "feature": "cholesterol_ratio",
+      "importance": 0.010176226124167442
+    },
+    {
+      "feature": "diet_score",
+      "importance": 0.007214974425733089
+    },
+    {
+      "feature": "ldl_cholesterol",
+      "importance": 0.0071558235213160515
+    }
+  ]
+}

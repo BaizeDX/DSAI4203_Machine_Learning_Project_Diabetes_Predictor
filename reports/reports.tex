@@ -298,7 +298,7 @@ Figure \ref{fig:feature_importance} displays the top 15 feature importances from
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{figures/02_feature_importance.png}
+\includegraphics[width=0.6\textwidth]{report_figures/02_feature_importance.png}
 \caption{Top 15 Feature Importance}
 \label{fig:feature_importance}
 \end{figure}
@@ -327,7 +327,7 @@ Figure \ref{fig:roc} shows the ROC curve from OOF predictions, with AUC = 0.7256
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{figures/04_roc_curve.png}
+\includegraphics[width=0.6\textwidth]{report_figures/04_roc_curve.png}
 \caption{ROC Curve (Out-of-Fold Predictions)}
 \label{fig:roc}
 \end{figure}
@@ -337,7 +337,7 @@ Figure \ref{fig:distribution} shows the prediction distributions for diabetic an
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{figures/05_prediction_distribution.png}
+\includegraphics[width=0.8\textwidth]{report_figures/05_prediction_distribution.png}
 \caption{Prediction Distribution by Class}
 \label{fig:distribution}
 \end{figure}
@@ -415,7 +415,7 @@ machinelearning_project/
 ├── models/                  # Saved models
 ├── submissions/             # Kaggle submission files
 ├── logs/                    # Experiment logs
-└── figures/                 # Generated plots
+└── report_figures/          # Generated report figures
 \end{lstlisting}
 
 The repository includes all code to reproduce the experiments and final results. To run the complete pipeline:
@@ -425,3 +425,4 @@ python -m src.train_xgb_cv
 \end{lstlisting}
 
 \end{document}
+```
