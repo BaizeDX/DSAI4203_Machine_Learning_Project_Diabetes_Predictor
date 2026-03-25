@@ -377,6 +377,15 @@ The final model was submitted to Kaggle, achieving:
     \item Private Score: 0.69314
 \end{itemize}
 
+Figure \ref{fig:kaggle_score} shows a screenshot of our Kaggle submission with team name and final score.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{report_figures/kaggle_score.png}
+\caption{Kaggle Submission Result}
+\label{fig:kaggle_score}
+\end{figure}
+
 The slight drop from CV AUC (0.7256) to test score (0.6956) is expected due to the synthetic nature of the data and potential distribution shifts between training and test sets.
 
 \section{Discussion}
@@ -429,8 +438,12 @@ The complete project code is organized as follows:
 
 \begin{lstlisting}[language=bash]
 machinelearning_project/
-├── data/                    # Dataset files
+├── data/                    # Dataset files (not included in submission)
 ├── notebooks/               # Jupyter notebooks (EDA, experiments)
+│   ├── 01_eda.ipynb        # Exploratory Data Analysis
+│   ├── 02_baseline.ipynb   # Baseline models
+│   ├── 03-10_*.ipynb       # Experiment history
+│   └── 11_xgboost_cv_final.ipynb  # Final notebook
 ├── src/                     # Python source code
 │   ├── __init__.py         # Package initialization
 │   ├── config.py           # Configuration and paths
@@ -438,17 +451,40 @@ machinelearning_project/
 │   ├── preprocessing.py    # Data preprocessing
 │   ├── models.py           # Model training with CV
 │   ├── train_xgb_cv.py     # Main training script
-│   └── evaluate.py         # Evaluation utilities
-├── models/                  # Saved models
+│   └── report_figures.py   # Report figure generator
+├── models/                  # Saved models (fold models)
 ├── submissions/             # Kaggle submission files
+│   └── final_submission.csv # Final submission
 ├── logs/                    # Experiment logs
-└── report_figures/          # Generated report figures
+│   ├── summary.json        # CV results summary
+│   ├── feature_importance.csv
+│   ├── oof_predictions.csv
+│   └── model_comparison.csv
+├── report_figures/          # Generated report figures
+│   ├── 01_cv_fold_aucs.png
+│   ├── 02_feature_importance.png
+│   ├── 03_feature_importance_pie.png
+│   ├── 04_roc_curve.png
+│   ├── 05_prediction_distribution.png
+│   └── 06_auc_boxplot.png
+└── requirements.txt         # Python dependencies
 \end{lstlisting}
 
 The repository includes all code to reproduce the experiments and final results. To run the complete pipeline:
 
 \begin{lstlisting}[language=bash]
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the complete pipeline
 python -m src.train_xgb_cv
+
+# Generate report figures
+python -m src.report_figures
 \end{lstlisting}
+
+\section*{Acknowledgments}
+
+We would like to thank the course instructors for their guidance throughout this project. The dataset is provided by Kaggle's Tabular Playground Series, and we acknowledge the open-source community for the excellent tools used in this work, including XGBoost, LightGBM, scikit-learn, and pandas.
 
 \end{document}

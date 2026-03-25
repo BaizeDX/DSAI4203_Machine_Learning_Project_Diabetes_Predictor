@@ -174,9 +174,8 @@ def run_xgb_cv(
     if config is None:
         config = ExperimentConfig()
 
-    # Apply feature engineering FIRST (deterministic, no leakage)
-    X = add_engineered_features(X, config)
-    X_test = add_engineered_features(X_test, config)
+    # X = add_engineered_features(X, config)
+    # X_test = add_engineered_features(X_test, config)
 
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
 

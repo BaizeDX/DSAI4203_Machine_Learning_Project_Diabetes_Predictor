@@ -73,8 +73,8 @@ def prepare_features(train_df, test_df, config=None):
     # Ensure categorical columns are strings (no encoding yet)
     for col in categorical_cols:
         if col in X.columns:
-            X[col] = X[col].astype(str).fillna('Unknown')
-            X_test[col] = X_test[col].astype(str).fillna('Unknown')
+            X[col] = X[col].fillna('Unknown').astype(str)
+            X_test[col] = X_test[col].fillna('Unknown').astype(str)
     
     print(f"   Features ready (categorical encoding will be done per fold)")
     print(f"   Feature count: {X.shape[1]}")
