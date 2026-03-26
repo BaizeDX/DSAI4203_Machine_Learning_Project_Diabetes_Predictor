@@ -1,4 +1,3 @@
-# src/features.py
 """Feature engineering functions."""
 
 import pandas as pd
@@ -15,7 +14,6 @@ def add_engineered_features(
     
     df = df.copy()
     
-    # Age-family history interaction
     if config.use_family_history_features:
         df['age_family_history'] = df['age'] * df['family_history_diabetes']
         df['age_bmi'] = df['age'] * df['bmi']
@@ -25,7 +23,6 @@ def add_engineered_features(
             df['cardiovascular_history'] * 2
         )
     
-    # Cholesterol metrics
     if config.use_cholesterol_features:
         df['cholesterol_ratio'] = df['cholesterol_total'] / (df['hdl_cholesterol'] + 1)
         df['non_hdl_cholesterol'] = df['cholesterol_total'] - df['hdl_cholesterol']

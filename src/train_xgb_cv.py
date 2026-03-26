@@ -1,4 +1,3 @@
-# src/train_xgb_cv.py
 """Main training script for XGBoost with proper cross-validation."""
 
 import sys
@@ -9,11 +8,9 @@ import pandas as pd
 import numpy as np
 import json
 
-# Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Import from src
 from src.config import (
     DATA_DIR, SUBMISSION_DIR, LOG_DIR,
     RANDOM_STATE, N_SPLITS, ExperimentConfig
@@ -44,7 +41,7 @@ def prepare_features(train_df, test_df, config=None):
     """
     Prepare features for modeling WITHOUT global encoding.
     
-    🔴 IMPORTANT: No global LabelEncoder here!
+    IMPORTANT: No global LabelEncoder here!
     Categorical encoding is done INSIDE each fold by models.py
     to prevent data leakage.
     """
@@ -53,24 +50,19 @@ def prepare_features(train_df, test_df, config=None):
     
     print("\n2. Preparing features...")
     
-    # Separate features and target
     X = train_df.drop(columns=['id', 'diagnosed_diabetes'])
     y = train_df['diagnosed_diabetes'].astype(int)
     X_test = test_df.drop(columns=['id'])
     
     print(f"   Original features: {X.shape[1]}")
     
-    # Apply feature engineering (deterministic, no leakage)
     X = add_engineered_features(X, config)
     X_test = add_engineered_features(X_test, config)
     print(f"   After feature engineering: {X.shape[1]}")
     
-    # 🔴 NO GLOBAL ENCODING!
-    # Keep categorical columns as strings for fold-wise encoding
     categorical_cols = ['gender', 'ethnicity', 'education_level',
                         'income_level', 'smoking_status', 'employment_status']
     
-    # Ensure categorical columns are strings (no encoding yet)
     for col in categorical_cols:
         if col in X.columns:
             X[col] = X[col].fillna('Unknown').astype(str)
@@ -115,18 +107,15 @@ def save_final_results(artifacts, submission_df, pred_col, train_df, y_true):
     - logs/summary.json (for report)
     - logs/oof_predictions.csv (for report)
     """
-    # 1. Save Kaggle submission (final_submission.csv)
     submission = submission_df.copy()
     submission[pred_col] = artifacts.test_pred
     submission_path = SUBMISSION_DIR / "final_submission.csv"
     submission.to_csv(submission_path, index=False)
     print(f"✓ Kaggle submission saved: {submission_path}")
     
-    # 2. Save feature importance
     artifacts.feature_importance.to_csv(LOG_DIR / "feature_importance.csv", index=False)
     print(f"✓ Feature importance saved: {LOG_DIR / 'feature_importance.csv'}")
     
-    # 3. Save summary JSON for report
     summary = {
         'fold_aucs': artifacts.fold_scores,
         'mean_fold_auc': artifacts.mean_auc,
@@ -140,7 +129,6 @@ def save_final_results(artifacts, submission_df, pred_col, train_df, y_true):
         json.dump(summary, f, indent=2)
     print(f"✓ Summary saved: {LOG_DIR / 'summary.json'}")
     
-    # 4. Save OOF predictions
     oof_df = pd.DataFrame({
         'id': train_df['id'],
         'y_true': y_true,
@@ -156,13 +144,10 @@ def main():
     print("XGBoost Training with Proper Cross-Validation")
     print("=" * 60)
     
-    # 1. Load data
     train_df, test_df, sample_sub = load_data()
     
-    # 2. Prepare features (NO GLOBAL ENCODING)
     X, y, X_test, categorical_cols = prepare_features(train_df, test_df)
     
-    # 3. Run baseline models
     print("\n3. Running baseline models...")
     baseline_results = run_all_baselines(
         X, y, categorical_cols, 
@@ -170,7 +155,6 @@ def main():
         random_state=RANDOM_STATE
     )
     
-    # 4. Run XGBoost with CV (fold-wise encoding inside)
     print("\n4. Running XGBoost with 5-fold CV...")
     artifacts = run_xgb_cv(
         X, y, X_test, categorical_cols,
@@ -179,23 +163,19 @@ def main():
         verbose=True
     )
     
-    # 5. Create comparison table
     print("\n5. Creating comparison table...")
     comparison_df = create_comparison_table(baseline_results, artifacts)
     print("\n" + comparison_df.to_string(index=False))
     
-    # Save comparison table
     comparison_df.to_csv(LOG_DIR / 'model_comparison.csv', index=False)
     print(f"\n✓ Comparison table saved: {LOG_DIR / 'model_comparison.csv'}")
     
-    # 6. Validate and save predictions
     print("\n6. Validating and saving predictions...")
     pred_col = sample_sub.columns[1]
     
     if validate_submission_predictions(artifacts.test_pred, sample_sub, pred_col):
         save_final_results(artifacts, sample_sub, pred_col, train_df, y)
     
-    # 7. Print final summary
     print("\n" + "=" * 60)
     print("FINAL SUMMARY")
     print("=" * 60)

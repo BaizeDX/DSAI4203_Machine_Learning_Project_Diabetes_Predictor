@@ -24,53 +24,53 @@ This project develops a systematic machine learning pipeline for predicting diab
 
 ```
 machinelearning_project/
-├── data/                           # Dataset files (not included in repo)
-│   ├── train.csv                   # 700k training samples
-│   ├── test.csv                    # 300k test samples
-│   └── sample_submission.csv       # Kaggle submission format
+├── README.md                      # Project overview and usage notes
+├── requirements.txt               # Python dependencies
 │
-├── notebooks/                      # Jupyter notebooks
-│   ├── 01_eda.ipynb               # Exploratory Data Analysis
-│   ├── 02_baseline.ipynb          # Baseline models (Dummy, Decision Tree)
-│   ├── 03-10_*.ipynb              # Experiment history
-│   └── 11_xgboost_cv_final.ipynb  # Final XGBoost pipeline
+├── data/                          # Kaggle input files
+│   ├── train.csv
+│   ├── test.csv
+│   └── sample_submission.csv
 │
-├── src/                            # Python source code
-│   ├── __init__.py                # Package initialization
-│   ├── config.py                  # Configuration and paths
-│   ├── features.py                # Feature engineering
-│   ├── preprocessing.py           # Data preprocessing
-│   ├── models.py                  # Model training with CV
-│   ├── train_xgb_cv.py            # Main training script
-│   ├── evaluate.py                # Evaluation utilities
-│   └── utils.py                   # Helper functions
+├── src/                           # Final reproducible code pipeline
+│   ├── config.py                  # Paths, constants, experiment config
+│   ├── features.py                # Final engineered features
+│   ├── preprocessing.py           # Shared preprocessing helpers
+│   ├── models.py                  # CV training, baselines, model logic
+│   ├── train_xgb_cv.py            # Main training entry point
+│   ├── report_figures.py          # Final report figure generator
+│   ├── evaluate.py                # Optional evaluation helpers
+│   ├── utils.py                   # Utility functions
+│   └── __init__.py
 │
-├── models/
-│   ├── 04-08_xgboost_test_*.pkl   # Saved models in previous labs
-│   └── xgb_cv_final/              # 5 fold models
-│       ├── xgb_fold_1.json
-│       ├── xgb_fold_2.json
-│       ├── xgb_fold_3.json
-│       ├── xgb_fold_4.json
-│       └── xgb_fold_5.json
+├── logs/                          # Final structured outputs from src/
+│   ├── model_comparison.csv       # Baseline vs final model comparison
+│   ├── oof_predictions.csv        # OOF predictions for analysis/ROC
+│   ├── feature_importance.csv     # Final feature importance table
+│   └── summary.json               # Fold AUCs, mean/std AUC, OOF AUC
 │
-├── submissions/                    # Kaggle submissions
-│   └── 11_xgboost_cv_submission.csv
+├── report_figures/                # Final report-ready figures from src/report_figures.py
+│   ├── 01_cv_fold_aucs.png
+│   ├── 02_feature_importance.png
+│   ├── 03_feature_importance_pie.png
+│   ├── 04_roc_curve.png
+│   ├── 05_prediction_distribution.png
+│   └── 06_auc_boxplot.png
 │
-├── logs/                           # Experiment logs
-│   ├── model_comparison.csv       # Model comparison table
-│   ├── oof_predictions.csv        # Out-of-fold predictions
-│   ├── feature_importance.csv     # Feature importance scores
-│   └── summary.json               # Experiment summary
+├── submissions/                   # Kaggle submission outputs
+│   └── final_submission.csv
 │
-├── figures/                        # Generated plots
-│   ├── roc_curve.png
-│   ├── calibration_curve.png
-│   ├── prediction_distribution.png
-│   ├── fold_aucs.png
-│   └── feature_importance.png
+├── notebooks/                     # EDA and historical experiments
+│   ├── 01_EDA.ipynb
+│   ├── 02_baseline.ipynb
+│   ├── 03_xgboost_default.ipynb
+│   ├── 04-10_*.ipynb
+│   ├── 11_xgboost_cv_final.ipynb
+│   └── 12_visualization.ipynb
 │
-└── requirements.txt               # Python dependencies
+├── models/                        # Archived intermediate models / old experiments
+├── figures/                       # Legacy notebook-generated figures
+└── reports/                       # Final report assets
 ```
 
 ## 📊 Data Exploration

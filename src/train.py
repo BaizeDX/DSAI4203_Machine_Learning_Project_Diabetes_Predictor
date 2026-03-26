@@ -1,4 +1,3 @@
-# src/train.py
 """Training pipeline with cross-validation."""
 
 import numpy as np

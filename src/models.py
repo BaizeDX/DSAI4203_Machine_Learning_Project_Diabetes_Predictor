@@ -1,4 +1,3 @@
-# src/models.py
 """Model training and evaluation with proper cross-validation."""
 
 import json
@@ -16,7 +15,6 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier
 
-# 直接从 config 导入需要的常量
 from src.config import RANDOM_STATE, N_SPLITS, ExperimentConfig
 from src.features import add_engineered_features
 
@@ -69,8 +67,6 @@ def build_decision_tree_model(seed: int = RANDOM_STATE) -> DecisionTreeClassifie
     return DecisionTreeClassifier(max_depth=5, random_state=seed)
 
 
-# src/models.py - _encode_categorical_fold 函数（已存在，确保正确）
-
 def _encode_categorical_fold(
     X_train_raw: pd.DataFrame,
     X_valid_raw: pd.DataFrame,
@@ -88,17 +84,13 @@ def _encode_categorical_fold(
             continue
 
         le = LabelEncoder()
-        # 🔴 关键：只 fit fold-train
         X_train_encoded[col] = le.fit_transform(X_train_encoded[col].astype(str))
 
-        # Transform fold-valid
         try:
             X_valid_encoded[col] = le.transform(X_valid_encoded[col].astype(str))
         except ValueError:
-            # Unseen category in validation - assign -1
             X_valid_encoded[col] = -1
 
-    # Align columns
     missing_valid = set(X_train_encoded.columns) - set(X_valid_encoded.columns)
     for col in missing_valid:
         X_valid_encoded[col] = 0
@@ -131,16 +123,13 @@ def run_baseline_cv(
         y_train = y.iloc[train_idx]
         y_valid = y.iloc[valid_idx]
 
-        # Fold-wise categorical encoding
         X_train_encoded, X_valid_encoded = _encode_categorical_fold(
             X_train_raw, X_valid_raw, categorical_cols
         )
 
-        # Train model
         model = model_fn()
         model.fit(X_train_encoded, y_train)
 
-        # Predict
         valid_pred = model.predict_proba(X_valid_encoded)[:, 1]
         fold_auc = roc_auc_score(y_valid, valid_pred)
         oof_pred[valid_idx] = valid_pred
@@ -174,12 +163,8 @@ def run_xgb_cv(
     if config is None:
         config = ExperimentConfig()
 
-    # X = add_engineered_features(X, config)
-    # X_test = add_engineered_features(X_test, config)
-
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
 
-    # Initialize storage
     oof_pred = np.zeros(len(X))
     fold_scores = []
     best_iterations = []
@@ -201,12 +186,10 @@ def run_xgb_cv(
             print(f"  Training: {len(X_train_raw)} samples")
             print(f"  Validation: {len(X_valid_raw)} samples")
 
-        # Fold-wise categorical encoding
         X_train_encoded, X_valid_encoded = _encode_categorical_fold(
             X_train_raw, X_valid_raw, categorical_cols
         )
 
-        # Encode test data using fold-train encoder
         X_test_encoded = X_test.copy()
         for col in categorical_cols:
             if col in X_test_encoded.columns and col in X_train_raw.columns:
@@ -217,13 +200,11 @@ def run_xgb_cv(
                 except ValueError:
                     X_test_encoded[col] = -1
 
-        # Align columns
         missing_test = set(X_train_encoded.columns) - set(X_test_encoded.columns)
         for col in missing_test:
             X_test_encoded[col] = 0
         X_test_encoded = X_test_encoded[X_train_encoded.columns]
 
-        # Train model
         model = build_xgb_model(seed=random_state + fold)
         model.fit(
             X_train_encoded,
@@ -232,20 +213,16 @@ def run_xgb_cv(
             verbose=False,
         )
 
-        # Validation predictions
         valid_pred = model.predict_proba(X_valid_encoded)[:, 1]
         fold_auc = roc_auc_score(y_valid, valid_pred)
         oof_pred[valid_idx] = valid_pred
         fold_scores.append(fold_auc)
 
-        # Track best iteration
         best_iter = getattr(model, "best_iteration", None)
         best_iterations.append(best_iter)
 
-        # Accumulate feature importance
         feature_importance_sum += model.feature_importances_
 
-        # Test predictions
         test_preds.append(model.predict_proba(X_test_encoded)[:, 1])
 
         if verbose:
@@ -253,15 +230,12 @@ def run_xgb_cv(
             if best_iter:
                 print(f"  Best iteration: {best_iter}")
 
-    # Average test predictions
     test_pred = np.mean(test_preds, axis=0)
 
-    # Compute overall metrics
     mean_auc = np.mean(fold_scores)
     std_auc = np.std(fold_scores)
     oof_auc = roc_auc_score(y, oof_pred)
 
-    # Build feature importance dataframe
     feature_importance = pd.DataFrame(
         {"feature": X.columns, "importance": feature_importance_sum / n_splits}
     ).sort_values("importance", ascending=False)
@@ -335,7 +309,6 @@ def create_comparison_table(
     """Create unified comparison table for report."""
     rows = []
 
-    # Baseline models
     rows.append({
         "Model": "Dummy Classifier",
         "CV AUC (mean)": baseline_results["dummy"]["mean_auc"],
@@ -352,7 +325,6 @@ def create_comparison_table(
         "Note": "Max depth=5, interpretable baseline",
     })
 
-    # XGBoost final model
     rows.append({
         "Model": "XGBoost (Final)",
         "CV AUC (mean)": xgb_results.mean_auc,
@@ -371,7 +343,6 @@ def save_xgb_results(
     output_dir: Path,
 ) -> None:
     """Save all XGBoost results with validation checks."""
-    # Validate submission
     errors = []
 
     if len(submission_df) != len(artifacts.test_pred):
@@ -392,17 +363,14 @@ def save_xgb_results(
 
     print("✓ Submission validation passed")
 
-    # Save submission
     submission = submission_df.copy()
     submission[pred_col] = artifacts.test_pred
     submission.to_csv(output_dir / "11_xgboost_cv_submission.csv", index=False)
     print(f"✓ Submission saved: {output_dir / '11_xgboost_cv_submission.csv'}")
 
-    # Save feature importance
     artifacts.feature_importance.to_csv(output_dir / "feature_importance.csv", index=False)
     print(f"✓ Feature importance saved: {output_dir / 'feature_importance.csv'}")
 
-    # Save summary JSON
     summary = {
         "fold_aucs": artifacts.fold_scores,
         "mean_auc": artifacts.mean_auc,

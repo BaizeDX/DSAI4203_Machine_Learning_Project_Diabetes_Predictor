@@ -1,4 +1,3 @@
-# src/report_figures.py
 """Generate report figures from main pipeline results.
 Run this after src/train_xgb_cv.py to create all report charts.
 
@@ -34,7 +33,7 @@ print(f"Reading results from: {LOG_DIR}")
 print(f"Saving figures to: {FIGURE_DIR}")
 
 # ============================================================
-# Load results (from main pipeline)
+# Load results
 # ============================================================
 
 summary_path = LOG_DIR / 'summary.json'
@@ -63,7 +62,6 @@ with open(summary_path, 'r', encoding='utf-8') as f:
 feature_importance = pd.read_csv(feat_imp_path)
 oof_df = pd.read_csv(oof_path)
 
-# Extract data
 fold_aucs = summary.get('fold_aucs', summary.get('fold_scores', []))
 mean_auc = summary.get('mean_fold_auc', np.mean(fold_aucs))
 std_auc = summary.get('std_fold_auc', np.std(fold_aucs))
@@ -123,7 +121,7 @@ plt.savefig(FIGURE_DIR / '01_cv_fold_aucs.pdf')
 print(f"   Saved: {FIGURE_DIR / '01_cv_fold_aucs.png'}")
 
 # ============================================================
-# Figure 2: Feature Importance (Top 15)
+# Figure 2: Feature Importance
 # ============================================================
 print("\n[2/7] Generating feature importance chart...")
 
@@ -152,7 +150,7 @@ plt.savefig(FIGURE_DIR / '02_feature_importance.pdf')
 print(f"   Saved: {FIGURE_DIR / '02_feature_importance.png'}")
 
 # ============================================================
-# Figure 3: Feature Importance Pie Chart (Top 5)
+# Figure 3: Feature Importance Pie Chart
 # ============================================================
 print("\n[3/7] Generating feature importance pie chart...")
 
@@ -208,7 +206,6 @@ print("\n[5/7] Generating prediction distribution chart...")
 
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-# By class
 ax1 = axes[0]
 for label, color, name in [(0, 'skyblue', 'No Diabetes'), (1, 'salmon', 'Diabetes')]:
     mask = y_true == label
@@ -220,7 +217,6 @@ ax1.set_title('Prediction Distribution by True Class', fontsize=14)
 ax1.legend()
 ax1.grid(True, alpha=0.3)
 
-# Overall
 ax2 = axes[1]
 ax2.hist(y_pred, bins=50, color='steelblue', alpha=0.7, edgecolor='black')
 ax2.set_xlabel('Predicted Probability', fontsize=12)

@@ -1,4 +1,3 @@
-# src/evaluate.py
 """Evaluation utilities."""
 
 import numpy as np

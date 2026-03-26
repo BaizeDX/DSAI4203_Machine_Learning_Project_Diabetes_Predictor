@@ -373,11 +373,11 @@ Figure \ref{fig:boxplot} shows the distribution of fold AUC scores, confirming t
 
 The final model was submitted to Kaggle, achieving:
 \begin{itemize}
-    \item Public Score: 0.69561
-    \item Private Score: 0.69314
+    \item Public Score: 0.69644
+    \item Private Score: 0.69320
 \end{itemize}
 
-Figure \ref{fig:kaggle_score} shows a screenshot of our Kaggle submission with team name and final score.
+Figure \ref{fig:kaggle_score} shows a screenshot of our Kaggle submission final score.
 
 \begin{figure}[H]
 \centering
@@ -438,36 +438,53 @@ The complete project code is organized as follows:
 
 \begin{lstlisting}[language=bash]
 machinelearning_project/
-├── data/                    # Dataset files (not included in submission)
-├── notebooks/               # Jupyter notebooks (EDA, experiments)
-│   ├── 01_eda.ipynb        # Exploratory Data Analysis
-│   ├── 02_baseline.ipynb   # Baseline models
-│   ├── 03-10_*.ipynb       # Experiment history
-│   └── 11_xgboost_cv_final.ipynb  # Final notebook
-├── src/                     # Python source code
-│   ├── __init__.py         # Package initialization
-│   ├── config.py           # Configuration and paths
-│   ├── features.py         # Feature engineering
-│   ├── preprocessing.py    # Data preprocessing
-│   ├── models.py           # Model training with CV
-│   ├── train_xgb_cv.py     # Main training script
-│   └── report_figures.py   # Report figure generator
-├── models/                  # Saved models (fold models)
-├── submissions/             # Kaggle submission files
-│   └── final_submission.csv # Final submission
-├── logs/                    # Experiment logs
-│   ├── summary.json        # CV results summary
-│   ├── feature_importance.csv
-│   ├── oof_predictions.csv
-│   └── model_comparison.csv
-├── report_figures/          # Generated report figures
+├── README.md                      # Project overview and usage notes
+├── requirements.txt               # Python dependencies
+│
+├── data/                          # Kaggle input files
+│   ├── train.csv
+│   ├── test.csv
+│   └── sample_submission.csv
+│
+├── src/                           # Final reproducible code pipeline
+│   ├── config.py                  # Paths, constants, experiment config
+│   ├── features.py                # Final engineered features
+│   ├── preprocessing.py           # Shared preprocessing helpers
+│   ├── models.py                  # CV training, baselines, model logic
+│   ├── train_xgb_cv.py            # Main training entry point
+│   ├── report_figures.py          # Final report figure generator
+│   ├── evaluate.py                # Optional evaluation helpers
+│   ├── utils.py                   # Utility functions
+│   └── __init__.py
+│
+├── logs/                          # Final structured outputs from src/
+│   ├── model_comparison.csv       # Baseline vs final model comparison
+│   ├── oof_predictions.csv        # OOF predictions for analysis/ROC
+│   ├── feature_importance.csv     # Final feature importance table
+│   └── summary.json               # Fold AUCs, mean/std AUC, OOF AUC
+│
+├── report_figures/                # Final report-ready figures from src/report_figures.py
 │   ├── 01_cv_fold_aucs.png
 │   ├── 02_feature_importance.png
 │   ├── 03_feature_importance_pie.png
 │   ├── 04_roc_curve.png
 │   ├── 05_prediction_distribution.png
 │   └── 06_auc_boxplot.png
-└── requirements.txt         # Python dependencies
+│
+├── submissions/                   # Kaggle submission outputs
+│   └── final_submission.csv
+│
+├── notebooks/                     # EDA and historical experiments
+│   ├── 01_EDA.ipynb
+│   ├── 02_baseline.ipynb
+│   ├── 03_xgboost_default.ipynb
+│   ├── 04-10_*.ipynb
+│   ├── 11_xgboost_cv_final.ipynb
+│   └── 12_visualization.ipynb
+│
+├── models/                        # Archived intermediate models / old experiments
+├── figures/                       # Legacy notebook-generated figures
+└── reports/                       # Final report assets
 \end{lstlisting}
 
 The repository includes all code to reproduce the experiments and final results. To run the complete pipeline:
@@ -485,6 +502,9 @@ python -m src.report_figures
 
 \section*{Acknowledgments}
 
-We would like to thank the course instructors for their guidance throughout this project. The dataset is provided by Kaggle's Tabular Playground Series, and we acknowledge the open-source community for the excellent tools used in this work, including XGBoost, LightGBM, scikit-learn, and pandas.
+We would like to thank the course instructors for their guidance throughout this project. The dataset is provided by Kaggle's Tabular Playground Series, and we acknowledge the open-source community for the excellent tools used in this work, including XGBoost, LightGBM, scikit-learn, and pandas. In addition, appreciate all the members in this group, they all offer their skill to make this project better.
+
+\medskip
+\noindent \textit{*Also thank my cat YongLe, whose cute appearance saved me from the edge of collapse during hyperparameter tuning.}
 
 \end{document}
