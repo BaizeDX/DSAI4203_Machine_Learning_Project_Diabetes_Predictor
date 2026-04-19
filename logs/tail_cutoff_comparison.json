@@ -1,0 +1,76 @@
+{
+  "preferred_cutoff": "pct:0.10",
+  "preferred_cutoff_percent": 10.0,
+  "preferred_tail_auc": 0.6986944591371629,
+  "preferred_validation_size": 3000,
+  "ordinary_cv_mean_auc": 0.701444110993189,
+  "ordinary_cv_std_auc": 0.0065852461922363105,
+  "cutoff_results": [
+    {
+      "cutoff": "pct:0.03",
+      "train_size": 29100,
+      "validation_size": 900,
+      "train_positive_rate": 0.6193470790378007,
+      "validation_positive_rate": 0.6444444444444445,
+      "auc": 0.7058943965517241,
+      "cutoff_percent": 3.0,
+      "auc_minus_cv_mean": 0.004450285558535105,
+      "preferred_cutoff": false
+    },
+    {
+      "cutoff": "pct:0.04",
+      "train_size": 28800,
+      "validation_size": 1200,
+      "train_positive_rate": 0.6195486111111111,
+      "validation_positive_rate": 0.6333333333333333,
+      "auc": 0.7167344497607655,
+      "cutoff_percent": 4.0,
+      "auc_minus_cv_mean": 0.015290338767576461,
+      "preferred_cutoff": false
+    },
+    {
+      "cutoff": "pct:0.05",
+      "train_size": 28500,
+      "validation_size": 1500,
+      "train_positive_rate": 0.6193333333333333,
+      "validation_positive_rate": 0.6346666666666667,
+      "auc": 0.7102431300987548,
+      "cutoff_percent": 5.0,
+      "auc_minus_cv_mean": 0.008799019105565797,
+      "preferred_cutoff": false
+    },
+    {
+      "cutoff": "pct:0.10",
+      "train_size": 27000,
+      "validation_size": 3000,
+      "train_positive_rate": 0.6188518518518519,
+      "validation_positive_rate": 0.6313333333333333,
+      "auc": 0.6986944591371629,
+      "cutoff_percent": 10.0,
+      "auc_minus_cv_mean": -0.0027496518560261585,
+      "preferred_cutoff": true
+    },
+    {
+      "cutoff": "pct:0.15",
+      "train_size": 25500,
+      "validation_size": 4500,
+      "train_positive_rate": 0.6189019607843137,
+      "validation_positive_rate": 0.6268888888888889,
+      "auc": 0.7020978118885859,
+      "cutoff_percent": 15.0,
+      "auc_minus_cv_mean": 0.0006537008953968471,
+      "preferred_cutoff": false
+    },
+    {
+      "cutoff": "pct:0.20",
+      "train_size": 24000,
+      "validation_size": 6000,
+      "train_positive_rate": 0.6190416666666667,
+      "validation_positive_rate": 0.6243333333333333,
+      "auc": 0.7032400369326217,
+      "cutoff_percent": 20.0,
+      "auc_minus_cv_mean": 0.0017959259394326743,
+      "preferred_cutoff": false
+    }
+  ]
+}
