@@ -1,0 +1,61 @@
+{
+  "experiment_name": "Default LightGBM baseline",
+  "model": "LGBMClassifier",
+  "split_method": "80/20 stratified holdout",
+  "random_state": 42,
+  "baseline_auc": 0.6825,
+  "xgboost_default_auc": 0.7192,
+  "lightgbm_default_auc": 0.722381817527767,
+  "auc_vs_baseline": 0.03988181752776698,
+  "auc_vs_xgboost_default": 0.003181817527767028,
+  "train_shape": [
+    560000,
+    42
+  ],
+  "validation_shape": [
+    140000,
+    42
+  ],
+  "top_features": [
+    {
+      "feature": "physical_activity_minutes_per_week",
+      "importance": 1180
+    },
+    {
+      "feature": "triglycerides",
+      "importance": 353
+    },
+    {
+      "feature": "age",
+      "importance": 295
+    },
+    {
+      "feature": "bmi",
+      "importance": 152
+    },
+    {
+      "feature": "heart_rate",
+      "importance": 120
+    },
+    {
+      "feature": "ldl_cholesterol",
+      "importance": 111
+    },
+    {
+      "feature": "cholesterol_total",
+      "importance": 110
+    },
+    {
+      "feature": "diet_score",
+      "importance": 107
+    },
+    {
+      "feature": "systolic_bp",
+      "importance": 98
+    },
+    {
+      "feature": "hdl_cholesterol",
+      "importance": 94
+    }
+  ]
+}

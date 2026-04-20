@@ -1,7 +1,7 @@
 {
   "max_train_rows": null,
   "preferred_fold": 7,
-  "selection_reason": "7-fold is selected because it has lower fold-to-fold variance.",
+  "selection_reason": "7-fold is selected as the best balance between validation performance, stability, and runtime.",
   "results": [
     {
       "fold_count": 5,
@@ -15,7 +15,7 @@
       "mean_auc": 0.7256110707089773,
       "std_auc": 0.0008345158087305099,
       "oof_auc": 0.7256043968112144,
-      "runtime_seconds": 413.6594374,
+      "runtime_seconds": 409.45853509999995,
       "preferred_fold": false
     },
     {
@@ -32,7 +32,7 @@
       "mean_auc": 0.7258523468167757,
       "std_auc": 0.0012935370757122709,
       "oof_auc": 0.725844511943356,
-      "runtime_seconds": 504.84992170000004,
+      "runtime_seconds": 513.8052120999998,
       "preferred_fold": true
     },
     {
@@ -52,7 +52,7 @@
       "mean_auc": 0.7259075974145796,
       "std_auc": 0.001465512897092867,
       "oof_auc": 0.7259047263862826,
-      "runtime_seconds": 741.5101294,
+      "runtime_seconds": 676.5040812,
       "preferred_fold": false
     }
   ]

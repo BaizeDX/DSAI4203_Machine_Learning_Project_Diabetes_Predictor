@@ -1,4 +1,4 @@
 Model,CV AUC (mean),CV AUC (std),OOF AUC,Note
 Dummy Classifier,0.5,0.0,0.5,Majority class predictor (lower bound)
-Decision Tree,0.6854199324877834,0.0009429462298786241,0.6856555567996926,"Max depth=5, interpretable baseline"
-XGBoost (Final),0.7256110707089773,0.0008345158087305099,0.7256043968112144,"With engineered features, early stopping, 5-fold CV"
+Decision Tree,0.6857217348348161,0.0017151002926009788,0.6858393358698467,"Max depth=5, interpretable baseline"
+XGBoost (Final),0.7258523468167757,0.0012935370757122709,0.725844511943356,"With engineered features, early stopping, 5-fold CV"

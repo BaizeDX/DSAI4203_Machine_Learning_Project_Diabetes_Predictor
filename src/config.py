@@ -16,7 +16,7 @@ FIGURE_DIR.mkdir(parents=True, exist_ok=True)
 
 TARGET = 'diagnosed_diabetes'
 RANDOM_STATE = 42
-N_SPLITS = 5
+N_SPLITS = 7
 
 XGB_PARAMS = {
     'objective': 'binary:logistic',

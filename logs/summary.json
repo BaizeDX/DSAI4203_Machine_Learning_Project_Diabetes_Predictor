@@ -1,61 +1,65 @@
 {
   "fold_aucs": [
-    0.7259607017518144,
-    0.7242820168772737,
-    0.725152857752661,
-    0.7267482782564978,
-    0.7259114989066395
+    0.725554247452194,
+    0.7257677950124684,
+    0.7258695428576613,
+    0.7238344865062436,
+    0.7259083056120631,
+    0.7285705625501515,
+    0.725461487726648
   ],
-  "mean_fold_auc": 0.7256110707089773,
-  "std_fold_auc": 0.0008345158087305099,
-  "oof_auc": 0.7256043968112144,
+  "mean_fold_auc": 0.7258523468167757,
+  "std_fold_auc": 0.0012935370757122709,
+  "oof_auc": 0.725844511943356,
   "best_iterations": [
-    1993,
-    1997,
     1999,
     1998,
+    1987,
+    1999,
+    1999,
+    1994,
     1999
   ],
   "top_features": [
     {
       "feature": "family_history_diabetes",
-      "importance": 0.4270536184310913
+      "importance": 0.42514656697000774
     },
     {
       "feature": "age_family_history",
-      "importance": 0.29445865750312805
+      "importance": 0.29749942251614164
     },
     {
       "feature": "age_bmi",
-      "importance": 0.069193547219038
+      "importance": 0.0676577729838235
     },
     {
       "feature": "cardio_risk_score",
-      "importance": 0.04559520073235035
+      "importance": 0.04984858791743006
     },
     {
       "feature": "physical_activity_minutes_per_week",
-      "importance": 0.03515188917517662
+      "importance": 0.03448432258197239
     },
     {
       "feature": "age",
-      "importance": 0.015728092938661575
+      "importance": 0.016584393568336964
     },
     {
       "feature": "triglycerides",
-      "importance": 0.011646192893385887
+      "importance": 0.011480279133788176
     },
     {
       "feature": "cholesterol_ratio",
-      "importance": 0.010176226124167442
+      "importance": 0.009940920264593192
     },
     {
       "feature": "diet_score",
-      "importance": 0.007214974425733089
+      "importance": 0.007053333667239973
     },
     {
       "feature": "ldl_cholesterol",
-      "importance": 0.0071558235213160515
+      "importance": 0.006862076398517404
     }
   ]
 }

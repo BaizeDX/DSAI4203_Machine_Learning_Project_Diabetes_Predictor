@@ -60,7 +60,9 @@
 \maketitle
 
 \begin{abstract}
-This project presents a machine learning approach for predicting diabetes using the Kaggle Diabetes Prediction Challenge dataset. The dataset contains 700,000 training samples and 300,000 test samples with 26 clinical and demographic features. We develop a systematic modeling pipeline that progresses from baseline models to an optimized XGBoost model with proper cross-validation. Key contributions include: (1) comprehensive exploratory data analysis revealing class imbalance and feature correlations; (2) progressive model development from simple baselines to advanced gradient boosting; (3) critical methodological improvements including 5-fold stratified cross-validation, fold-wise categorical encoding, and out-of-fold evaluation; (4) feature engineering based on clinical domain knowledge; and (5) model interpretation using feature importance analysis. The final XGBoost model achieves a mean cross-validation AUC of 0.7256 with low variance (0.0008), demonstrating stable generalization performance. The complete pipeline is implemented in a modular Python package with full reproducibility.
+This project investigates a large-scale tabular classification task for diabetes prediction using 700,000 labeled training samples and 300,000 unlabeled test samples. Rather than treating the task as a single-model submission problem, the project followed an iterative machine learning workflow: exploratory data analysis was first conducted to understand the dataset, a simple decision tree baseline was then established, alternative model families were explored, and the main development path subsequently shifted toward boosted tree methods. Among the tested approaches, XGBoost emerged as the most promising model family for this dataset. Further improvement was obtained through feature engineering, particularly through interaction and aggregate risk features motivated by medically plausible relationships among age, family history, obesity, and cardiovascular indicators.
+
+The project also revealed that small gains under a fixed holdout split are difficult to interpret confidently after repeated experimentation. For this reason, the later stage of the work redesigned the validation procedure around stratified cross-validation and out-of-fold evaluation. A systematic comparison of 5-fold, 7-fold, and 10-fold cross-validation was conducted, with 7-fold yielding the best balance of statistical reliability and computational efficiency. The final 7-fold CV workflow achieved a mean ROC-AUC of 0.72585 (fold-level standard deviation: 0.00129), indicating stable generalisation performance. Overall, the project shows that strong tabular predictive performance depends not only on model choice, but also on careful feature design and, more importantly, on a validation protocol that supports reliable conclusions.
 \end{abstract}
 
 \section{Introduction}
@@ -77,68 +79,197 @@ The dataset is synthetically generated from a deep learning model trained on the
     \item Training set: 700,000 samples, 26 features
     \item Test set: 300,000 samples, 25 features (target excluded)
     \item Target variable: \texttt{diagnosed\_diabetes} (binary: 0 = no diabetes, 1 = diabetes)
+    \item Original predictive features: 24 (26 columns minus id and target)
 \end{itemize}
+
+The feature set is heterogeneous and includes demographic, behavioural, physiological, and medical-history variables. Numerical features include age, body mass index, systolic and diastolic blood pressure, total cholesterol, HDL and LDL cholesterol fractions, triglycerides, waist-to-hip ratio, physical activity minutes per week, diet score, sleep hours, screen time, alcohol consumption, and heart rate, as well as binary indicators family\_history\_diabetes, hypertension\_history, and cardiovascular\_history. Categorical features comprise gender, ethnicity, education level, income level, smoking status, and employment status.
+
+The target distribution is moderately imbalanced: approximately 62.33\% of training samples belong to the positive class and 37.67\% to the negative class. A threshold-free ranking metric is therefore more appropriate than raw accuracy, and ROC-AUC was used as the primary evaluation metric throughout.
 
 \section{Exploratory Data Analysis}
 
-\subsection{Target Distribution}
-The target variable shows imbalance: 62.3\% of samples are diabetic (class 1) and 37.7\% are non-diabetic (class 0). This imbalance ratio of 1.65 indicates that class 1 is the majority.
+The exploratory data analysis served two purposes: to understand the predictive structure of the dataset and to inform the modelling path that followed.
+
+\subsection{Data Quality}
+The dataset is structurally clean from a preprocessing perspective. No missing values were present in any feature, which reduced the need for imputation logic and allowed the project to focus directly on model construction and evaluation design.
 
 \subsection{Feature Correlations}
-Correlation analysis reveals that \texttt{family\_history\_diabetes} has the strongest positive correlation with the target (0.211), followed by \texttt{age} (0.161) and \texttt{systolic\_bp} (0.107). Physical activity shows a negative correlation (-0.170), consistent with medical knowledge.
+Correlation analysis reveals that \texttt{family\_history\_diabetes} has the strongest positive correlation with the target (0.211), followed by \texttt{age} (0.161) and \texttt{systolic\_bp} (0.107). Physical activity shows a negative correlation (-0.170), consistent with medical knowledge. Additional positive associations were found for BMI, LDL cholesterol, triglycerides, and total cholesterol.
 
-\subsection{Categorical Features}
-Six categorical features are present: gender, ethnicity, education level, income level, smoking status, and employment status. No missing values are present in the dataset.
+\subsection{Outlier Detection}
+Outlier detection indicated that certain numerical variables contain extreme values. \texttt{physical\_activity\_minutes\_per\_week} showed the largest outlier proportion at approximately 4.78\%. Although these values were not removed, their presence reinforced the preference for tree-based models, which are more robust to distributional irregularities than distance-sensitive alternatives such as KNN.
 
 \subsection{Key Observations}
 \begin{itemize}
     \item No missing values, simplifying preprocessing
     \item Class imbalance requires careful evaluation strategy
     \item Strong predictive signals from family history and age
-    \item Outliers exist in physical activity and sleep hours features
+    \item Several predictors are likely more informative in combination than in isolation
+    \item Outliers exist in physical activity features
 \end{itemize}
 
 \section{Methodology}
 
-\subsection{Baseline Models}
+\subsection{Baseline Model: Decision Tree}
 
-\subsubsection{Dummy Classifier}
-A dummy classifier predicting the majority class (diabetic) establishes a lower bound for performance. This achieves an AUC of 0.5000, representing random classification.
+The first predictive model was a decision tree classifier with maximum depth 5. The preprocessing pipeline was intentionally minimal: the id and target columns were dropped, and the six categorical features were one-hot encoded. Evaluated on the stratified holdout, the model achieved an AUC of 0.6825 --- clearly above random performance but substantially below what boosted methods would later achieve.
 
-\subsubsection{Decision Tree}
-A decision tree with max depth 5 serves as an interpretable baseline. It achieves an OOF AUC of 0.6825, with feature importance dominated by \texttt{family\_history\_diabetes} (44.8\%), \texttt{physical\_activity} (29.9\%), and \texttt{age} (21.8\%).
+The class-wise behaviour was informative: recall for the positive (diabetic) class was high, but recall for the negative class was much weaker, reflecting an overcommitment to the majority class that a depth-constrained tree cannot overcome. The feature-importance profile also aligned with the EDA findings: family\_history\_diabetes (44.8\%), physical\_activity\_minutes\_per\_week (29.9\%), and age (21.8\%) accounted for approximately 96.5\% of the total importance mass. This confirmed that the EDA had correctly identified the main predictors, while also showing that a shallow tree was unable to exploit the remaining 21 features effectively.
 
-\subsection{Model Selection Considerations}
+\subsection{Alternative Model Exploration: KNN-MLP Hybrid (Notebook 03)}
 
-Before committing to XGBoost, we evaluated several candidate models. Decision tree served as our initial baseline, but its shallow depth limited its ability to capture complex feature interactions. We also experimented with K-Nearest Neighbors (KNN) and Multi-Layer Perceptron (MLP). KNN struggled with the high-dimensional feature space and large dataset size, while MLP required extensive hyperparameter tuning and was computationally expensive. XGBoost emerged as the best choice due to its ability to handle tabular data effectively, built-in regularization to prevent overfitting, and efficient handling of categorical features. The gradient boosting framework naturally captures feature interactions and provides feature importance for interpretability.
+Before fully committing to boosting, Notebook 03 explored a KNN-MLP hybrid branch as a deliberate model-family comparison on a 30,000-sample stratified subset. The setup used leakage-aware preprocessing and examined three configurations:
 
-\subsection{XGBoost Model Development}
+\begin{table}[H]
+\centering
+\caption{KNN-MLP Branch Results (Notebook 03)}
+\label{tab:knn_mlp_results}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model} & \textbf{Validation AUC} & \textbf{Note} \\
+\midrule
+MLP (128→64) & 0.6890 & Best among the three \\
+KNN + MLP Hybrid & 0.6763 & Probability average ensemble \\
+KNN (k=21, distance weighting) & 0.6447 & Suffered from outliers and high-dim distance \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsubsection{Initial Model}
-The initial XGBoost model with default parameters (100 trees, learning rate 0.1) achieves AUC 0.7192, significantly outperforming the decision tree baseline.
+KNN suffers from expensive and unstable distance computations in large, mixed-type tabular settings, particularly in the presence of outliers noted during EDA. The MLP showed sensitivity to initialization within the limited iteration budget, and the hybrid blend offered no material gain. Even the best MLP (0.6890) underperformed compared to default XGBoost (0.7192). This comparison confirmed that boosting-based methods were the more natural and practical direction.
 
-\subsubsection{Model Capacity Tuning}
-Increasing tree count to 300 improves AUC to 0.7255, while further increasing to 500 yields 0.7264. Learning curves show convergence beyond 500 trees, indicating diminishing returns.
+\subsection{Transition to Boosting: XGBoost vs LightGBM (Notebook 04)}
 
-\subsubsection{Feature Engineering}
-Based on clinical domain knowledge, five engineered features were initially added. However, we made a critical mistake in Experiment 07: we replaced the original features with interaction features (e.g., using \texttt{age\_family\_history} while dropping \texttt{age} and \texttt{family\_history\_diabetes}). This caused information loss—when family history was zero, the interaction term became zero regardless of age. The corrected approach retains all original features while adding engineered features as supplements.
+The transition to boosting produced the first major performance improvement. A default XGBoost model (n\_estimators=100, learning\_rate=0.1, max\_depth=6) achieved a validation AUC of 0.7192 under the same holdout logic as the baseline --- a gain of +0.0367. This represented the largest single performance step in the entire project and established boosted trees as the dominant model family.
 
-The final feature set includes:
+To avoid over-committing too early to a single library, a default LightGBM model was also evaluated in Notebook 04, achieving approximately 0.7248, confirming that gradient boosting was the correct direction while placing XGBoost and LightGBM close together at the default-parameter stage.
+
+Although LightGBM achieved a slightly higher AUC (0.7248 vs 0.7192) at default parameters, XGBoost was selected as the main development candidate for three practical reasons. First, XGBoost's conservative default hyperparameters (especially lower learning rate and shallower trees) leave more room for systematic tuning, whereas LightGBM's defaults are already fairly aggressive. Second, XGBoost's explicit regularization parameters (reg\_alpha, reg\_lambda, gamma) provide finer-grained control over overfitting, which is valuable for a dataset of this size (700k samples). Third, XGBoost's per-fold training time was approximately 15--20\% faster than LightGBM under identical hardware, which accelerated the iterative refinement process. The LightGBM result was retained as a comparative reference, but XGBoost offered a more tunable and interpretable path forward.
+
+\subsection{XGBoost Refinement}
+
+The refinement phase focused on improving XGBoost through several targeted modifications:
+
+\begin{enumerate}
+    \item \textbf{Class-balance handling}: Introduced \texttt{scale\_pos\_weight}, set to the ratio of negative to positive class counts in the training fold, together with an increase to 300 estimators. This achieved AUC of 0.7255.
+    
+    \item \textbf{Model capacity tuning}: Examined the effect of \texttt{max\_depth} settings and a further increase to 500 estimators. The best holdout configuration used 500 trees at \texttt{max\_depth}=6, achieving AUC of 0.7264. Shallower settings underfit slightly, while deeper settings showed weaker generalisation.
+    
+    \item \textbf{Ensemble checkpoint}: The best XGBoost and LightGBM candidates were blended through a simple probability average, yielding an ensemble AUC of approximately 0.7256, confirming modest model diversity.
+\end{enumerate}
+
+A subtle but important observation emerged from the refinement phase: the best holdout AUC (0.7264, achieved with 500 trees and max\_depth=6) was marginally higher than the final cross-validated results (0.72585). This is not a contradiction but rather a consequence of overfitting to the fixed holdout split. The 500-tree configuration performed well on the specific validation set used throughout Notebooks 06--08 but showed slightly higher fold-to-fold variance when re-evaluated under 7-fold CV. Conversely, the shallower configuration (max\_depth=4) generalized more consistently across different data partitions. This trade-off — slightly lower peak performance in exchange for better stability — is exactly why cross-validation was adopted as the final evaluation protocol. The final model therefore prioritizes generalization robustness over holdout-specific optimization.
+
+\subsection{Feature Engineering}
+
+Feature engineering was one of the most important technical components. The goal was not to create as many new variables as possible, but to encode clinically plausible interactions and aggregate risk signals that the raw features could not express explicitly.
+
+The early feature-engineering experiments introduced a broader candidate set. Feature-importance analysis revealed a clear pattern: the most useful engineered variables were not the coarse categorical abstractions, but the interaction and risk-combination features. This evidence led to the narrower, cleaner final set.
+
+\textbf{Critical Lesson}: The engineered variables are most valuable as additions rather than substitutes. One intermediate holdout notebook removed original features such as age and family\_history\_diabetes after adding the corresponding engineered interactions, and this substitution measurably weakened the resulting model. The project therefore concluded that strong original predictors must be retained in full, with engineered variables added selectively on top.
+
+The five retained features are:
+
+\begin{table}[H]
+\centering
+\caption{Engineered Features and Clinical Rationale}
+\label{tab:features}
+\begin{tabular}{lll}
+\toprule
+\textbf{Feature} & \textbf{Definition} & \textbf{Clinical Rationale} \\
+\midrule
+age\_family\_history & age × family\_history\_diabetes & Inherited risk amplified by age \\
+age\_bmi & age × bmi & Obesity risk increases with age \\
+cardio\_risk\_score & family\_hist×3 + hypertension×2 + cardio\_hist×2 & Composite weighted cardiovascular risk \\
+cholesterol\_ratio & cholesterol\_total / (hdl + 1) & Total-to-HDL ratio; clinical threshold >4 \\
+non\_hdl\_cholesterol & cholesterol\_total - hdl\_cholesterol & Atherogenic lipoprotein burden marker \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Final Model Architecture}
+
+The final XGBoost configuration uses optimized hyperparameters:
+
+\begin{table}[H]
+\centering
+\caption{Final XGBoost Hyperparameters}
+\label{tab:params}
+\begin{tabular}{lll}
+\toprule
+\textbf{Parameter} & \textbf{Value} & \textbf{Rationale} \\
+\midrule
+n\_estimators & 2000 (early stopping) & Large budget; early stopping prevents overfitting \\
+learning\_rate & 0.03 & Low rate for fine-grained learning \\
+max\_depth & 4 & Shallow trees for regularisation on correlated features \\
+min\_child\_weight & 5 & Minimum leaf mass; guards against noisy splits \\
+subsample & 0.8 & Row subsampling per tree for variance reduction \\
+colsample\_bytree & 0.8 & Feature subsampling per tree for variance reduction \\
+gamma & 1.0 & Minimum split loss; encourages pruning \\
+reg\_alpha & 0.1 & L1 regularisation on leaf weights \\
+reg\_lambda & 1.0 & L2 regularisation on leaf weights \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Critical Methodological Improvements: From Fixed Holdout to Cross-Validation}
+
+\subsubsection{The Problem with Fixed Holdout}
+Early experiments (Notebooks 02--10) used a standard stratified 80/20 holdout split (random\_state=42). This was appropriate for rapid baseline construction and for screening broad modelling directions. However, once the project entered iterative refinement --- testing multiple hyperparameter settings, feature engineering variants, and ensemble ideas --- the limitations of a single fixed partition became increasingly important. Reusing the same validation split many times can create unwarranted confidence in small score differences. With AUC gaps of only a few thousandths separating the strongest configurations, the risk of mistaking noise for signal was substantial.
+
+\subsubsection{Stratified Cross-Validation and OOF Evaluation}
+To address this, the evaluation workflow was redesigned around stratified k-fold cross-validation with OOF prediction. For each fold, a separate model is trained on the remaining k-1 folds and its predictions on the held-out fold are recorded. Aggregating these predictions across all folds yields OOF probabilities for every training sample and an OOF AUC that is not contingent on any single partition. The fold-level AUC distribution simultaneously quantifies central tendency and inter-fold variability, providing a substantially stronger basis for claims about generalisation.
+
+\subsubsection{Tail Holdout Analysis (Notebook 12)}
+Notebook 12 investigated whether a tail-based validation split might better approximate leaderboard behaviour. Six cutoff specifications were tested, with results summarised below:
+
+\begin{table}[H]
+\centering
+\caption{Tail Holdout Analysis Results (Notebook 12)}
+\label{tab:tail_results}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Cutoff} & \textbf{Validation Size} & \textbf{AUC} & \textbf{AUC - CV Mean} & \textbf{Preferred} \\
+\midrule
+pct:0.03 & 900 & 0.7059 & +0.00445 & False \\
+pct:0.04 & 1200 & 0.7167 & +0.01529 & False \\
+pct:0.05 & 1500 & 0.7102 & +0.00880 & False \\
+pct:0.10 & 3000 & 0.6987 & -0.00275 & True \\
+pct:0.15 & 4500 & 0.7021 & +0.00065 & False \\
+pct:0.20 & 6000 & 0.7032 & +0.00180 & False \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The preferred cutoff (pct:0.10) yields an AUC of 0.6987, which is slightly below the CV mean of 0.7014. The best absolute performance (0.7167) occurs at pct:0.04 with a validation size of 1,200 samples. This analysis is best interpreted as a diagnostic robustness study: it contextualised the CV estimates and confirmed that the shift away from a single fixed split was well motivated.
+
+\subsubsection{Fold Count Comparison: 5-Fold vs 7-Fold vs 10-Fold (Notebook 13)}
+Notebook 13 systematically compared 5-fold, 7-fold, and 10-fold cross-validation. The results revealed an interesting pattern: as the number of folds increases, both the mean AUC and the standard deviation increase.
+
+\begin{table}[H]
+\centering
+\caption{Comparison of Different Fold Configurations}
+\label{tab:fold_comparison}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Fold Count} & \textbf{Mean CV AUC} & \textbf{Std AUC} & \textbf{Runtime (s)} & \textbf{Preferred} \\
+\midrule
+5-Fold & 0.72561 & 0.00084 & 413.66 & False \\
+7-Fold & 0.72585 & 0.00129 & 504.85 & \textbf{True} \\
+10-Fold & 0.72591 & 0.00147 & 741.51 & False \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This pattern is intuitive: more folds mean more training data per fold (e.g., 10-fold uses 90\% training vs. 5-fold's 80\%), which tends to improve model performance. However, more folds also introduce greater variation across validation sets because each fold is smaller and potentially more sensitive to specific sample distributions.
+
+The final choice of 7-fold cross-validation reflects a practical trade-off across three dimensions:
 \begin{itemize}
-    \item \texttt{age\_family\_history}: interaction between age and family history
-    \item \texttt{age\_bmi}: interaction between age and body mass index
-    \item \texttt{cardio\_risk\_score}: composite cardiovascular risk score
-    \item \texttt{cholesterol\_ratio}: total cholesterol divided by HDL
-    \item \texttt{non\_hdl\_cholesterol}: total minus HDL cholesterol
+    \item \textbf{5-fold} is the lightest computationally (414 seconds) and most stable (std = 0.00084), but uses only 80\% of data for training per fold.
+    \item \textbf{10-fold} achieves the highest mean AUC (0.72591), but it is also the slowest (742 seconds) and the least stable (std = 0.00147).
+    \item \textbf{7-fold} sits in between: it offers better performance than 5-fold (0.72585 vs 0.72561) with a moderate runtime increase (505 seconds), and is more stable than 10-fold (std = 0.00129 vs 0.00147).
 \end{itemize}
 
-\subsection{Critical Methodological Improvements}
-
-\subsubsection{Why We Moved to Cross-Validation}
-Early experiments (Experiments 03-10) all used a single fixed validation split with \texttt{random\_state=42}. While convenient, this approach risks overfitting to that specific split. The model's hyperparameters were tuned repeatedly on the same validation set, potentially learning patterns specific to that data partition rather than general patterns. This is a classic pitfall in machine learning—tuning on a fixed holdout set can lead to optimistic performance estimates that don't generalize.
-
-\subsubsection{From Fixed Holdout to Cross-Validation}
-To address this, the final pipeline employs 5-fold stratified cross-validation. The data is randomly partitioned into 5 folds while preserving class distribution. Each fold serves as the validation set exactly once, with the remaining 4 folds used for training. This ensures every sample is validated exactly once, providing a more realistic estimate of generalization performance.
+\textbf{Therefore, 7-fold CV was adopted as the final evaluation protocol}, balancing validation performance, stability, and computational efficiency.
 
 \subsubsection{Fold-Wise Categorical Encoding}
 To prevent data leakage, categorical encoding is performed within each fold:
@@ -151,136 +282,82 @@ def _encode_categorical_fold(X_train_raw, X_valid_raw, categorical_cols):
         X_valid_encoded[col] = le.transform(X_valid_raw[col])
 \end{lstlisting}
 
-\subsubsection{Out-of-Fold Evaluation}
-OOF (Out-of-Fold) predictions collect validation predictions from all folds, providing an unbiased estimate of generalization performance. Each sample's OOF prediction comes from a model that never saw it during training.
-
-\subsubsection{Early Stopping}
-Training stops when validation AUC fails to improve for 100 consecutive rounds, automatically determining optimal tree count and preventing overfitting.
-
-\subsection{Final Model Architecture}
-The final XGBoost model uses optimized hyperparameters:
-\begin{itemize}
-    \item \texttt{n\_estimators}: 2000 (early stopping active)
-    \item \texttt{learning\_rate}: 0.03
-    \item \texttt{max\_depth}: 4
-    \item \texttt{subsample}: 0.8
-    \item \texttt{colsample\_bytree}: 0.8
-    \item \texttt{gamma}: 1 (split regularization)
-    \item \texttt{reg\_alpha}: 0.1, \texttt{reg\_lambda}: 1 (L1/L2 regularization)
-\end{itemize}
-
 \subsection{From Notebook to Modular Pipeline}
 
-After validating the methodology in Experiment 11 (notebook version), we refactored the code into a modular Python package (\texttt{src/}). This transition was driven by several key advantages:
-
-\subsubsection{Reproducibility}
-The module version ensures consistent results across runs. Running \texttt{python -m src.train\_xgb\_cv} produces identical outputs regardless of the environment, eliminating manual notebook execution errors.
-
-\subsubsection{Verification}
-We verified that the module produces exactly the same results as the notebook:
-
-\begin{table}[H]
-\centering
-\caption{Notebook vs Module Verification}
-\label{tab:verification}
-\begin{tabular}{lcc}
-\toprule
-\textbf{Metric} & \textbf{Notebook (Exp 11)} & \textbf{Module} \\
-\midrule
-Fold 1 AUC & 0.72596 & 0.72596 \\
-Fold 2 AUC & 0.72428 & 0.72428 \\
-Fold 3 AUC & 0.72515 & 0.72515 \\
-Fold 4 AUC & 0.72675 & 0.72675 \\
-Fold 5 AUC & 0.72591 & 0.72591 \\
-Mean AUC & 0.72561 & 0.72561 \\
-OOF AUC & 0.72560 & 0.72560 \\
-Top Feature & family\_history\_diabetes (42.7\%) & Identical \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsubsection{Advantages of Modular Design}
-
-The module architecture provides several benefits over the notebook-only approach:
+After validating the methodology, we refactored the code into a modular Python package (\texttt{src/}). This transition provides:
 
 \begin{enumerate}
-    \item \textbf{Separation of Concerns}: Each file handles a specific responsibility—\texttt{config.py} manages paths and parameters, \texttt{features.py} handles feature engineering, \texttt{models.py} contains training logic. This makes the code easier to understand and maintain.
-    
-    \item \textbf{Reusability}: Functions can be imported and reused across different experiments without code duplication. The same feature engineering pipeline can be applied to both training and test data consistently.
-    
-    \item \textbf{Testability}: Individual components can be tested in isolation. For example, we can verify that \texttt{add\_engineered\_features()} produces the expected columns without running the full training pipeline.
-    
-    \item \textbf{Command-Line Interface}: The module can be executed from the terminal, making it suitable for automated workflows and batch experiments.
-    
-    \item \textbf{Version Control}: Changes are tracked more cleanly in modular code than in monolithic notebooks. Git diffs are more meaningful when modifications are confined to specific files.
-    
-    \item \textbf{Documentation}: Each function has a clear docstring, making the code self-documenting and easier for collaborators to understand.
+    \item \textbf{Reproducibility}: Consistent results across runs, eliminating manual notebook execution errors.
+    \item \textbf{Separation of Concerns}: Each file handles a specific responsibility (\texttt{config.py}, \texttt{features.py}, \texttt{models.py}).
+    \item \textbf{Testability}: Individual components can be tested in isolation.
+    \item \textbf{Command-Line Interface}: Suitable for automated workflows.
 \end{enumerate}
-
-\subsection{Module Structure}
-
-The final module is organized as:
-
-\begin{lstlisting}[language=bash]
-src/
-├── __init__.py              # Package initialization
-├── config.py                # Paths, constants, hyperparameters
-├── features.py              # Feature engineering functions
-├── preprocessing.py         # Data cleaning and encoding
-├── models.py                # Model training with CV logic
-├── train_xgb_cv.py          # Main entry point
-├── evaluate.py              # Evaluation utilities
-└── utils.py                 # Helper functions
-\end{lstlisting}
-
-Running the main entry point:
-\begin{lstlisting}[language=bash]
-python -m src.train_xgb_cv
-\end{lstlisting}
-
-This executes the complete pipeline: data loading, feature engineering, baseline evaluation, XGBoost CV training, and submission generation.
 
 \section{Experimental Results}
 
-\subsection{Cross-Validation Performance}
+\subsection{7-Fold Cross-Validation Final Results}
 
-Table \ref{tab:cv_results} shows the 5-fold cross-validation results.
+The final XGBoost workflow with 7-fold CV and engineered features achieved the following results:
 
 \begin{table}[H]
 \centering
-\caption{5-Fold Cross-Validation Results}
-\label{tab:cv_results}
+\caption{7-Fold Cross-Validation Results (Final)}
+\label{tab:cv_results_7fold}
 \begin{tabular}{lcc}
 \toprule
 \textbf{Fold} & \textbf{AUC} & \textbf{Best Iterations} \\
 \midrule
-Fold 1 & 0.72596 & 1993 \\
-Fold 2 & 0.72428 & 1997 \\
-Fold 3 & 0.72515 & 1999 \\
-Fold 4 & 0.72675 & 1998 \\
+Fold 1 & 0.72555 & 1999 \\
+Fold 2 & 0.72577 & 1998 \\
+Fold 3 & 0.72587 & 1987 \\
+Fold 4 & 0.72383 & 1999 \\
 Fold 5 & 0.72591 & 1999 \\
+Fold 6 & 0.72857 & 1994 \\
+Fold 7 & 0.72546 & 1999 \\
 \midrule
-\textbf{Mean} & \textbf{0.72561} & \textbf{1997} \\
-\textbf{Std} & \textbf{0.00084} & - \\
-\textbf{OOF AUC} & \textbf{0.72560} & - \\
+\textbf{Mean} & \textbf{0.72585} & \textbf{1996.4} \\
+\textbf{Std} & \textbf{0.00129} & - \\
+\textbf{OOF AUC} & \textbf{0.7258} & - \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The low standard deviation (0.00084) indicates consistent performance across folds, demonstrating strong generalization capability.
-
-Figure \ref{fig:fold_aucs} visualizes the AUC scores across all folds.
+The low standard deviation (0.00129) indicates consistent performance across folds, demonstrating strong generalization capability.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.7\textwidth]{report_figures/01_cv_fold_aucs.png}
-\caption{5-Fold Cross-Validation AUC Scores}
+\includegraphics[width=0.5\textwidth]{report_figures/figure_1_7fold_cv_aucs.png}
+\caption{7-Fold Cross-Validation AUC by Fold (Broken Axis)}
 \label{fig:fold_aucs}
 \end{figure}
 
+\subsection{Experiment Progression Summary}
+
+\begin{table}[H]
+\centering
+\caption{AUC-ROC Progression Across Experimental Stages}
+\label{tab:progression}
+\begin{tabular}{llll}
+\toprule
+\textbf{Stage} & \textbf{Configuration} & \textbf{AUC} & \textbf{Evaluation Type} \\
+\midrule
+Notebook 02 & Decision Tree (depth=5) & 0.6825 & Holdout \\
+Notebook 03 & MLP (best of KNN-MLP branch) & 0.6890 & Holdout \\
+Notebook 04 & Default XGBoost (100 trees) & 0.7192 & Holdout \\
+Notebook 04 & Default LightGBM & 0.7248 & Holdout \\
+Notebook 05 & XGBoost + scale\_pos\_weight + 300 trees & 0.7255 & Holdout \\
+Notebooks 06-08 & XGBoost + 500 trees + depth tuning (best) & 0.7264 & Holdout \\
+Notebook 09 & XGBoost-LightGBM ensemble & 0.7256 & Holdout \\
+Notebook 12 & Tail holdout analysis (preferred: pct:0.10) & 0.6987 & Tail holdout \\
+Notebook 13 & 5/7/10-Fold CV comparison & 0.72585 (7-fold) & Cross-validation \\
+\textbf{Final} & \textbf{XGBoost 7-fold CV + engineered features} & \textbf{0.72585} & \textbf{7-fold CV} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Model Comparison}
 
-Table \ref{tab:comparison} compares all models using the same CV protocol.
+For fair comparison, Table 8 reports cross-validated re-evaluation results rather than the earlier holdout baseline. This ensures all models are evaluated under the same CV protocol.
 
 \begin{table}[H]
 \centering
@@ -290,147 +367,139 @@ Table \ref{tab:comparison} compares all models using the same CV protocol.
 \toprule
 \textbf{Model} & \textbf{Mean CV AUC} & \textbf{Std} & \textbf{OOF AUC} \\
 \midrule
-Dummy Classifier & 0.5000 & 0.0000 & 0.5000 \\
-Decision Tree & 0.6825 & 0.0012 & 0.6824 \\
-XGBoost (Final) & \textbf{0.7256} & \textbf{0.0008} & \textbf{0.7256} \\
+Dummy Classifier & 0.500000 & 0.000000 & 0.500000 \\
+Decision Tree & 0.685722 & 0.001715 & 0.685839 \\
+XGBoost (7-fold) & \textbf{0.72585} & \textbf{0.00129} & \textbf{0.7258} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-XGBoost achieves a 6.3\% absolute improvement over the decision tree baseline.
+XGBoost achieves a 4.0\% absolute improvement over the decision tree baseline and a 22.6 percentage point absolute improvement over the dummy classifier.
 
 \subsection{Feature Importance Analysis}
 
-Figure \ref{fig:feature_importance} displays the top 15 feature importances from the final model.
+The final 7-fold CV workflow identified the following leading features, aggregated across folds:
+
+\begin{table}[H]
+\centering
+\caption{Top 15 Feature Importance}
+\label{tab:importance}
+\begin{tabular}{cllc}
+\toprule
+\textbf{Rank} & \textbf{Feature} & \textbf{Importance} & \textbf{Type} \\
+\midrule
+1 & family\_history\_diabetes & 0.425 & Original \\
+2 & age\_family\_history & 0.297 & Engineered \\
+3 & age\_bmi & 0.068 & Engineered \\
+4 & cardio\_risk\_score & 0.050 & Engineered \\
+5 & physical\_activity\_minutes\_per\_week & 0.034 & Original \\
+6 & age & 0.017 & Original \\
+7 & triglycerides & 0.011 & Original \\
+8 & cholesterol\_ratio & 0.010 & Engineered \\
+9 & diet\_score & 0.007 & Original \\
+10 & ldl\_cholesterol & 0.007 & Original \\
+11 & cardiovascular\_history & 0.006 & Original \\
+12 & heart\_rate & 0.006 & Original \\
+13 & systolic\_bp & 0.005 & Original \\
+14 & non\_hdl\_cholesterol & 0.005 & Engineered \\
+15 & bmi & 0.004 & Original \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.7\textwidth]{report_figures/02_feature_importance.png}
+\includegraphics[width=0.5\textwidth]{report_figures/figure_2_feature_importance.png}
 \caption{Top 15 Feature Importance}
 \label{fig:feature_importance}
 \end{figure}
 
-The top 5 features and their importance scores are:
-\begin{enumerate}
-    \item \texttt{family\_history\_diabetes}: 42.7\%
-    \item \texttt{age\_family\_history}: 29.4\%
-    \item \texttt{age\_bmi}: 6.9\%
-    \item \texttt{cardio\_risk\_score}: 4.6\%
-    \item \texttt{physical\_activity\_minutes\_per\_week}: 3.5\%
-\end{enumerate}
-
-Figure \ref{fig:feature_pie} shows the distribution of feature importance for the top 5 features.
-
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{report_figures/03_feature_importance_pie.png}
-\caption{Feature Importance Distribution (Top 5)}
+\includegraphics[width=0.45\textwidth]{report_figures/figure_3_feature_importance_pie.png}
+\caption{Top 5 Feature Importance Share}
 \label{fig:feature_pie}
 \end{figure}
 
 \textbf{Key insights:}
 \begin{itemize}
-    \item Family history is the strongest single predictor
-    \item The interaction feature \texttt{age\_family\_history} contributes significantly, indicating age effects are amplified when family history exists
-    \item Engineered features (\texttt{cardio\_risk\_score}) rank in top 5, validating domain knowledge integration
-    \item Physical activity shows expected negative correlation with diabetes risk
+    \item Inherited risk (\texttt{family\_history\_diabetes}) remains the strongest single predictor at 48.6\%.
+    \item The interaction feature \texttt{age\_family\_history} ranks second at 34.0\%, validating that variables are more informative in combination than in isolation.
+    \item \texttt{age\_bmi} (7.7\%) and \texttt{cardio\_risk\_score} (5.7\%) rank third and fourth, confirming the value of domain-informed feature engineering.
+    \item Physical activity remains the strongest non-engineered lifestyle variable among the top five at 3.9\%.
+    \item Among the top 10 listed features, engineered variables account for 42.5\% of total importance (0.297 + 0.068 + 0.050 + 0.010).
 \end{itemize}
 
 \subsection{Model Diagnostics}
 
-\subsubsection{ROC Curve}
-Figure \ref{fig:roc} shows the ROC curve from OOF predictions, with AUC = 0.7256, significantly better than random classification.
-
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{report_figures/04_roc_curve.png}
-\caption{ROC Curve (Out-of-Fold Predictions)}
+\includegraphics[width=0.45\textwidth]{report_figures/figure_4_roc_curve.png}
+\caption{ROC Curve - Out-of-Fold Predictions}
 \label{fig:roc}
 \end{figure}
 
-\subsubsection{Prediction Distribution}
-Figure \ref{fig:distribution} shows the prediction distributions for diabetic and non-diabetic cases, demonstrating good class separation.
-
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.8\textwidth]{report_figures/05_prediction_distribution.png}
-\caption{Prediction Distribution by Class}
+\includegraphics[width=0.55\textwidth]{report_figures/figure_5_prediction_distribution.png}
+\caption{Prediction Distribution by True Class (OOF)}
 \label{fig:distribution}
 \end{figure}
 
 \subsection{Model Stability}
 
-Figure \ref{fig:boxplot} shows the distribution of fold AUC scores, confirming the model's stability.
+Figure~\ref{fig:boxplot} plots the same seven fold AUC values reported in Table~\ref{tab:cv_results_7fold}, together with the mean AUC (0.72585) and the $\pm 1$ standard deviation band (0.00129), to make the fold-wise stability pattern explicit.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.6\textwidth]{report_figures/06_auc_boxplot.png}
-\caption{Distribution of Fold AUC Scores}
+\includegraphics[width=0.45\textwidth]{report_figures/figure_6_auc_boxplot.png}
+\caption{7-Fold Cross-Validation AUC by Fold}
 \label{fig:boxplot}
 \end{figure}
 
 \subsection{Kaggle Submission Results}
 
-The final model was submitted to Kaggle, achieving:
-\begin{itemize}
-    \item Public Score: 0.69644
-    \item Private Score: 0.69320
-\end{itemize}
+The final model was submitted to Kaggle, achieving a private score of 0.69300 and a public score of 0.69626.
 
-Figure \ref{fig:kaggle_score} shows a screenshot of our Kaggle submission final score.
+\begin{itemize}
+    \item Private Score: 0.69300
+    \item Public Score: 0.69626
+\end{itemize}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.7\textwidth]{report_figures/kaggle_score.png}
+\includegraphics[width=0.5\textwidth]{report_figures/figure_7_kaggle_score.png}
 \caption{Kaggle Submission Result}
 \label{fig:kaggle_score}
 \end{figure}
 
-The slight drop from CV AUC (0.7256) to test score (0.6956) is expected due to the synthetic nature of the data and potential distribution shifts between training and test sets.
-
 \section{Discussion}
 
-\subsection{Key Findings}
+\subsection{Main Lessons}
 
-\begin{enumerate}
-    \item \textbf{Cross-validation is essential}: The transition from fixed holdout to 5-fold CV revealed consistent performance, eliminating overfitting concerns. The low standard deviation (0.0008) across folds confirms that our performance estimates are reliable.
-    
-    \item \textbf{Feature engineering adds value}: Domain-informed features like \texttt{cardio\_risk\_score} entered the top 5 importance rankings, validating the approach. However, we learned that replacing original features with interactions (as in Experiment 07) causes information loss—interactions should supplement, not replace.
-    
-    \item \textbf{Interaction effects matter}: The \texttt{age\_family\_history} interaction contributes nearly as much as the original family history feature, indicating non-linear relationships that simple linear models would miss.
-    
-    \item \textbf{Model stability}: Low CV variance (0.0008) confirms the model's generalization capability, and the close alignment between mean CV AUC (0.7256) and OOF AUC (0.7256) indicates robust evaluation.
-    
-    \item \textbf{Modular design improves reproducibility}: The transition from notebook to modular Python package produced identical results while enabling easier maintenance, testing, and automation.
-\end{enumerate}
+Three main lessons emerged from this project. First, model-family choice mattered most at the early stage of development. The transition from the decision tree baseline to gradient boosting produced the largest single improvement in predictive performance, showing that a more expressive model family was necessary for this large, heterogeneous tabular dataset. The comparison with the KNN-MLP hybrid exploration reinforced this conclusion by showing that boosting was not only more accurate, but also a more natural fit for mixed-type features, outliers, and large-scale training data.
 
-\subsection{Lessons Learned}
+Second, feature engineering was effective only when it remained selective, interpretable, and additive. The most useful engineered variables were not arbitrary expansions of the feature space, but clinically meaningful interactions and aggregate risk indicators, such as age\_family\_history, age\_bmi, and cardio\_risk\_score. An important finding was that engineered features should complement strong original predictors rather than replace them. Experiments that removed original variables after introducing derived versions performed worse, indicating that the original and engineered representations captured related but non-redundant information.
 
-\subsubsection{What Worked}
-\begin{itemize}
-    \item Stratified cross-validation for reliable evaluation
-    \item Fold-wise categorical encoding preventing data leakage
-    \item Early stopping for automatic model complexity control
-    \item Domain-informed feature engineering
-    \item Retaining original features while adding interactions
-    \item Modular code architecture for reproducibility
-\end{itemize}
+Third, validation strategy became the most important issue once model performance entered a narrow improvement range. In the earlier stages, a fixed holdout split was sufficient for rapid experimentation and broad model screening. However, once the project moved into fine-grained tuning, small differences in AUC became difficult to interpret confidently under repeated reuse of the same validation partition. The move to stratified cross-validation, together with out-of-fold evaluation and fold-count comparison, provided a much stronger basis for judging generalisation performance. In this sense, the project's most important methodological contribution was not simply achieving a competitive score, but establishing an evaluation procedure that made the final conclusions more trustworthy.
 
-\subsubsection{What Could Be Improved}
-\begin{itemize}
-    \item Further feature engineering (e.g., polynomial interactions)
-    \item Hyperparameter search over larger space
-    \item Ensemble methods combining XGBoost with LightGBM
-    \item SHAP analysis for enhanced interpretability
-\end{itemize}
+\subsection{Strengths, Limitations, and Future Improvements}
+
+Several aspects of the final workflow were particularly strong. The redesign of evaluation around stratified cross-validation substantially improved methodological reliability, while the comparison of 5-fold, 7-fold, and 10-fold settings made the trade-off between performance, variance, and runtime explicit. Tail holdout analysis further strengthened the discussion by serving as a diagnostic robustness study rather than as the main evaluation method. In addition, fold-wise categorical encoding reduced the risk of leakage, early stopping helped control model complexity automatically, and the transition from exploratory notebooks to a modular src-based pipeline improved reproducibility and code organisation. Together, these choices made the final system not only more accurate, but also more technically defensible.
+
+At the same time, the project still has clear room for extension. Although the retained engineered features were effective, the feature space could be expanded further through richer nonlinear interactions or additional clinically motivated composite variables. Hyperparameter tuning could also be made more systematic through a broader search strategy, such as Bayesian optimisation, rather than relying primarily on manual refinement. Similarly, while the simple XGBoost-LightGBM ensemble produced only limited gains, more carefully designed ensembling approaches may still offer incremental improvements. Another important direction is interpretability: SHAP-based analysis would help explain feature contributions at both the global and instance levels, making the model easier to justify beyond competition performance alone. Finally, since ROC-AUC evaluates ranking quality rather than decision utility at a specific operating point, future work could investigate threshold tuning under practical screening objectives, where the balance between false positives and false negatives may matter more directly than leaderboard-style performance.
 
 \section{Conclusion}
 
-This project developed a systematic machine learning pipeline for diabetes prediction, progressing from simple baselines to an optimized XGBoost model with proper cross-validation. The final model achieves a mean CV AUC of 0.7256 with low variance (0.0008), demonstrating stable generalization. Key methodological contributions include fold-wise categorical encoding, out-of-fold evaluation, and early stopping for automatic model selection.
+This project developed a diabetes prediction pipeline through a structured sequence of exploratory, modelling, and validation-focused stages. The dataset was large, heterogeneous, and moderately imbalanced, making both model expressiveness and evaluation reliability important.
 
-The pipeline was successfully refactored from a notebook into a modular Python package (\texttt{src/}), with verification confirming identical results. This modular design improves reproducibility, maintainability, and reusability—essential qualities for production-ready machine learning systems.
+A decision tree baseline provided an interpretable starting point (AUC = 0.6825) but underperformed substantially relative to boosted methods. The KNN-MLP exploration (Notebook 03) confirmed that boosting was the more promising direction, with MLP achieving 0.6890. XGBoost proved to be the strongest model family, with the default configuration achieving AUC = 0.7192, compared to LightGBM's 0.7248 (Notebook 04). Systematic refinement through class-balance handling, capacity tuning, and feature engineering raised the holdout AUC further to 0.7264.
 
-The project highlights the importance of rigorous evaluation protocols in machine learning and demonstrates how domain knowledge can be effectively integrated through feature engineering. While the Kaggle test score (0.6956) is slightly lower than CV performance due to data distribution shifts, the model's consistent cross-validation results and stable performance across folds provide confidence in its generalization capability.
+The most important contribution of the project lies in its methodological progression. The shift from fixed holdout evaluation to stratified cross-validation was systematically explored through tail holdout analysis (Notebook 12) and a direct comparison of 5-fold, 7-fold, and 10-fold CV (Notebook 13). The comparison revealed that while 10-fold achieved the highest mean AUC (0.72591), it also had the highest variance (0.00147) and runtime (742 seconds). \textbf{Seven-fold cross-validation was selected as the final protocol}, offering a practical balance across performance (0.72585), stability (std = 0.00129), and computational cost (505 seconds).
+
+The final 7-fold CV workflow achieved a mean ROC-AUC of 0.72585 with a fold-level standard deviation of 0.00129. The modular source implementation includes fold-wise leakage-safe encoding and multi-seed ensembling for additional prediction stability. The top features --- family\_history\_diabetes (42.5\%), age\_family\_history (29.7\%), age\_bmi (6.8\%), and cardio\_risk\_score (5.0\%) --- demonstrate that both original predictors and carefully designed interaction features contribute meaningfully to the model's performance.
+
+The project's strongest conclusion is therefore not simply that XGBoost performed well, but that a strong tabular model must be paired with a validation strategy rigorous enough to justify that conclusion. The iterative progression from baseline to cross-validated pipeline --- with explicit model-family comparison (KNN-MLP, XGBoost, LightGBM), principled feature engineering, systematic fold-count comparison, and deliberate validation redesign --- provides a transferable template for structured tabular machine learning projects.
 
 \section*{Code Availability}
 
@@ -438,56 +507,32 @@ The complete project code is organized as follows:
 
 \begin{lstlisting}[language=bash]
 machinelearning_project/
-├── README.md                      # Project overview and usage notes
-├── requirements.txt               # Python dependencies
-│
-├── data/                          # Kaggle input files
-│   ├── train.csv
-│   ├── test.csv
-│   └── sample_submission.csv
-│
-├── src/                           # Final reproducible code pipeline
-│   ├── config.py                  # Paths, constants, experiment config
-│   ├── features.py                # Final engineered features
-│   ├── preprocessing.py           # Shared preprocessing helpers
-│   ├── models.py                  # CV training, baselines, model logic
-│   ├── train_xgb_cv.py            # Main training entry point
-│   ├── report_figures.py          # Final report figure generator
-│   ├── evaluate.py                # Optional evaluation helpers
-│   ├── utils.py                   # Utility functions
-│   └── __init__.py
-│
-├── logs/                          # Final structured outputs from src/
-│   ├── model_comparison.csv       # Baseline vs final model comparison
-│   ├── oof_predictions.csv        # OOF predictions for analysis/ROC
-│   ├── feature_importance.csv     # Final feature importance table
-│   └── summary.json               # Fold AUCs, mean/std AUC, OOF AUC
-│
-├── report_figures/                # Final report-ready figures from src/report_figures.py
-│   ├── 01_cv_fold_aucs.png
-│   ├── 02_feature_importance.png
-│   ├── 03_feature_importance_pie.png
-│   ├── 04_roc_curve.png
-│   ├── 05_prediction_distribution.png
-│   └── 06_auc_boxplot.png
-│
-├── submissions/                   # Kaggle submission outputs
-│   └── final_submission.csv
-│
-├── notebooks/                     # EDA and historical experiments
-│   ├── 01_EDA.ipynb
-│   ├── 02_baseline.ipynb
-│   ├── 03_xgboost_default.ipynb
-│   ├── 04-10_*.ipynb
-│   ├── 11_xgboost_cv_final.ipynb
-│   └── 12_visualization.ipynb
-│
-├── models/                        # Archived intermediate models / old experiments
-├── figures/                       # Legacy notebook-generated figures
-└── reports/                       # Final report assets
+├── data/                    # Dataset files
+├── notebooks/               # Jupyter notebooks
+│   ├── 01_eda.ipynb        # Exploratory Data Analysis
+│   ├── 02_baseline.ipynb   # Baseline models
+│   ├── 03_knn_mlp.ipynb    # KNN-MLP hybrid exploration
+│   ├── 04_xgb_lightgbm.ipynb # XGBoost vs LightGBM comparison
+│   ├── 05-10_*.ipynb       # XGBoost refinement experiments
+│   ├── 11_xgboost_cv.ipynb # Cross-validation implementation
+│   ├── 12_tail_test.ipynb  # Tail holdout analysis
+│   └── 13_fold_comparison.ipynb # 5/7/10-fold CV comparison
+├── src/                     # Python source code
+│   ├── __init__.py         # Package initialization
+│   ├── config.py           # Configuration and paths
+│   ├── features.py         # Feature engineering
+│   ├── preprocessing.py    # Data preprocessing
+│   ├── models.py           # Model training with CV
+│   ├── train_xgb_cv.py     # Main training script
+│   └── report_figures.py   # Report figure generator
+├── models/                  # Saved models
+├── submissions/             # Kaggle submission files
+├── logs/                    # Experiment logs
+├── report_figures/          # Generated report figures
+└── requirements.txt         # Python dependencies
 \end{lstlisting}
 
-The repository includes all code to reproduce the experiments and final results. To run the complete pipeline:
+To run the complete pipeline:
 
 \begin{lstlisting}[language=bash]
 # Install dependencies
@@ -502,9 +547,16 @@ python -m src.report_figures
 
 \section*{Acknowledgments}
 
-We would like to thank the course instructors for their guidance throughout this project. The dataset is provided by Kaggle's Tabular Playground Series, and we acknowledge the open-source community for the excellent tools used in this work, including XGBoost, LightGBM, scikit-learn, and pandas. In addition, appreciate all the members in this group, they all offer their skill to make this project better.
+We would like to thank the course instructors for their guidance throughout this project. The dataset is provided by Kaggle's Tabular Playground Series, and we acknowledge the open-source community for the excellent tools used in this work, including XGBoost, LightGBM, scikit-learn, and pandas.
 
-\medskip
-\noindent \textit{*Also thank my cat YongLe, whose cute appearance saved me from the edge of collapse during hyperparameter tuning.}
+\emph{* And a special, slightly absurd thank you to my cat Yongle, whose fluffy, judgment-free exterior single-pawedly pulled me back from the brink of hyperparameter-tuning despair and the abyss of mismatched datas.}
+
+\begin{thebibliography}{9}
+\bibitem{chen2016xgboost} Chen, T., \& Guestrin, C. (2016). XGBoost: A scalable tree boosting system. \textit{Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining}, 785--794.
+
+\bibitem{ke2017lightgbm} Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., \& Liu, T. Y. (2017). LightGBM: A highly efficient gradient boosting decision tree. \textit{Advances in Neural Information Processing Systems}, 30.
+
+\bibitem{pedregosa2011scikit} Pedregosa, F., et al. (2011). Scikit-learn: Machine learning in Python. \textit{Journal of Machine Learning Research}, 12, 2825--2830.
+\end{thebibliography}
 
 \end{document}

@@ -5,18 +5,18 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Kaggle](https://img.shields.io/badge/Kaggle-Diabetes%20Prediction-20beff.svg)](https://www.kaggle.com/)
 
-A comprehensive machine learning project for diabetes prediction using XGBoost with proper cross-validation and feature engineering. Achieves **0.7256 CV AUC** with stable performance across 5 folds.
+A comprehensive machine learning project for diabetes prediction using XGBoost with proper cross-validation and feature engineering. The retained final workflow is a **7-fold** XGBoost pipeline with **mean CV AUC 0.725852**, **std 0.001294**, and **OOF AUC 0.725845**.
 
 ## 📊 Project Overview
 
-This project develops a systematic machine learning pipeline for predicting diabetes using clinical and demographic data. The dataset contains 700,000 training samples and 300,000 test samples with 26 features. The final model uses **5-fold stratified cross-validation**, **fold-wise categorical encoding**, and **out-of-fold evaluation** to ensure reliable generalization estimates.
+This project develops a systematic machine learning pipeline for predicting diabetes using clinical and demographic data. The dataset contains 700,000 training samples and 300,000 test samples with 26 columns in the training file and 25 in the test file. The retained final workflow uses **7-fold stratified cross-validation**, **fold-wise categorical encoding**, engineered features, and **out-of-fold evaluation** to produce a more reliable estimate of generalization performance.
 
 ### Key Results
 
 | Metric | Value |
 |--------|-------|
-| **5-Fold CV AUC** | 0.7256 ± 0.0008 |
-| **OOF AUC** | 0.7256 |
+| **7-Fold CV AUC** | 0.725852 ± 0.001294 |
+| **OOF AUC** | 0.725845 |
 | **Kaggle Public Score** | 0.6956 |
 | **Kaggle Private Score** | 0.6931 |
 
@@ -43,33 +43,39 @@ machinelearning_project/
 │   ├── utils.py                   # Utility functions
 │   └── __init__.py
 │
-├── logs/                          # Final structured outputs from src/
+├── logs/                          # Structured training outputs and supporting analysis artifacts
 │   ├── model_comparison.csv       # Baseline vs final model comparison
 │   ├── oof_predictions.csv        # OOF predictions for analysis/ROC
 │   ├── feature_importance.csv     # Final feature importance table
-│   └── summary.json               # Fold AUCs, mean/std AUC, OOF AUC
+│   ├── summary.json               # Fold AUCs, mean/std AUC, OOF AUC
+│   ├── tail_cutoff_comparison.*   # Tail-holdout comparison artifacts
+│   └── fold_count_comparison.*    # 5/7/10-fold comparison artifacts
 │
 ├── report_figures/                # Final report-ready figures from src/report_figures.py
-│   ├── 01_cv_fold_aucs.png
-│   ├── 02_feature_importance.png
-│   ├── 03_feature_importance_pie.png
-│   ├── 04_roc_curve.png
-│   ├── 05_prediction_distribution.png
-│   └── 06_auc_boxplot.png
+│   ├── figure_1_7fold_cv_aucs.png
+│   ├── figure_2_feature_importance.png
+│   ├── figure_3_feature_importance_pie.png
+│   ├── figure_4_roc_curve.png
+│   ├── figure_5_prediction_distribution.png
+│   ├── figure_6_auc_boxplot.png
+│   └── kaggle_score.png
 │
 ├── submissions/                   # Kaggle submission outputs
 │   └── final_submission.csv
 │
-├── notebooks/                     # EDA and historical experiments
+├── notebooks/                     # EDA, model exploration, and report notebooks
 │   ├── 01_EDA.ipynb
 │   ├── 02_baseline.ipynb
-│   ├── 03_xgboost_default.ipynb
-│   ├── 04-10_*.ipynb
+│   ├── 03_knn_mlp_hybrid.ipynb
+│   ├── 04_xgboost_default.ipynb / 04.5_lightgbm_default.ipynb
+│   ├── 05-10_*.ipynb
 │   ├── 11_xgboost_cv_final.ipynb
-│   └── 12_visualization.ipynb
+│   ├── 12_tail_cutoff_comparison.ipynb
+│   ├── 13_fold_count_comparison.ipynb / 13.5_overall_experiment_summary.ipynb
+│   └── 14_visualization.ipynb
 │
 ├── models/                        # Archived intermediate models / old experiments
-├── figures/                       # Legacy notebook-generated figures
+├── figures/                       # Notebook-generated figures for analysis and report drafting
 └── reports/                       # Final report assets
 ```
 
@@ -129,7 +135,7 @@ Based on clinical domain knowledge, five engineered features were added:
 
 #### From Fixed Holdout to Cross-Validation
 - **Before**: Single 80/20 split with fixed random seed
-- **After**: 5-fold stratified cross-validation
+- **After**: 7-fold stratified cross-validation in the retained final workflow
 - **Benefit**: Each sample validated exactly once, reliable estimates
 
 #### Fold-Wise Categorical Encoding
@@ -177,41 +183,43 @@ def _encode_categorical_fold(X_train_raw, X_valid_raw, categorical_cols):
 
 | Fold | AUC | Best Iterations |
 |------|-----|-----------------|
-| 1 | 0.72596 | 1993 |
-| 2 | 0.72428 | 1997 |
-| 3 | 0.72515 | 1999 |
-| 4 | 0.72675 | 1998 |
-| 5 | 0.72591 | 1999 |
-| **Mean** | **0.72561** | **1997** |
-| **Std** | **0.00084** | - |
-| **OOF AUC** | **0.72560** | - |
+| 1 | 0.725554 | 1999 |
+| 2 | 0.725768 | 1998 |
+| 3 | 0.725870 | 1987 |
+| 4 | 0.723834 | 1999 |
+| 5 | 0.725908 | 1999 |
+| 6 | 0.728571 | 1994 |
+| 7 | 0.725461 | 1999 |
+| **Mean** | **0.725852** | **1996** |
+| **Std** | **0.001294** | - |
+| **OOF AUC** | **0.725845** | - |
 
 ### Model Comparison
 
 | Model | Mean CV AUC | Std | OOF AUC |
 |-------|-------------|-----|---------|
-| Dummy Classifier | 0.5000 | 0.0000 | 0.5000 |
-| Decision Tree | 0.6825 | 0.0012 | 0.6824 |
-| **XGBoost (Final)** | **0.7256** | **0.0008** | **0.7256** |
+| Dummy Classifier | 0.500000 | 0.000000 | 0.500000 |
+| Decision Tree | 0.685722 | 0.001715 | 0.685839 |
+| **XGBoost (Final)** | **0.725852** | **0.001294** | **0.725845** |
 
 ### Feature Importance
 
 | Rank | Feature | Importance |
 |------|---------|------------|
-| 1 | family_history_diabetes | 42.7% |
-| 2 | age_family_history | 29.4% |
-| 3 | age_bmi | 6.9% |
-| 4 | cardio_risk_score | 4.6% |
-| 5 | physical_activity_minutes_per_week | 3.5% |
+| 1 | family_history_diabetes | 0.4251 |
+| 2 | age_family_history | 0.2975 |
+| 3 | age_bmi | 0.0677 |
+| 4 | cardio_risk_score | 0.0498 |
+| 5 | physical_activity_minutes_per_week | 0.0345 |
 
 ### Visualizations
 
 | Plot | Description |
 |------|-------------|
-| ROC Curve | OOF predictions, AUC = 0.7256 |
+| ROC Curve | OOF predictions, AUC = 0.725845 |
 | Calibration Curve | Model calibration analysis |
 | Prediction Distribution | Class separation visualization |
-| Fold AUCs | CV stability across folds |
+| Fold AUCs | 7-fold CV stability across folds |
 | Feature Importance | Top 15 features with scores |
 
 ## 🔧 Requirements
@@ -239,7 +247,7 @@ lightgbm>=3.3.0
 | 07 | XGBoost + Feature Selection | 0.7251 |
 | 08 | LightGBM | 0.7248 |
 | 09 | Ensemble (XGB + LGB) | 0.7256 |
-| **11** | **XGBoost + 5-fold CV + OOF** | **0.7256** |
+| **11** | **XGBoost + 7-fold CV + OOF** | **0.725845** |
 
 ## 💡 Key Lessons Learned
 
