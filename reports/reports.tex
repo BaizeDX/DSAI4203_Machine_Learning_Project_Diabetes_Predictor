@@ -378,12 +378,14 @@ XGBoost achieves a 4.0\% absolute improvement over the decision tree baseline an
 
 \subsection{Feature Importance Analysis}
 
-The final 7-fold CV workflow identified the following leading features, aggregated across folds:
+The final 7-fold CV workflow identified the following leading features, aggregated across folds.
 
 \begin{table}[H]
 \centering
-\caption{Top 15 Feature Importance}
-\label{tab:importance}
+\caption{Top 8 Feature Importance}
+\label{tab:importance_top8}
+\small
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{cllc}
 \toprule
 \textbf{Rank} & \textbf{Feature} & \textbf{Importance} & \textbf{Type} \\
@@ -396,6 +398,20 @@ The final 7-fold CV workflow identified the following leading features, aggregat
 6 & age & 0.017 & Original \\
 7 & triglycerides & 0.011 & Original \\
 8 & cholesterol\_ratio & 0.010 & Engineered \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Remaining Top 7-15 Feature Importance}
+\label{tab:importance_rest}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{cllc}
+\toprule
+\textbf{Rank} & \textbf{Feature} & \textbf{Importance} & \textbf{Type} \\
+\midrule
 9 & diet\_score & 0.007 & Original \\
 10 & ldl\_cholesterol & 0.007 & Original \\
 11 & cardiovascular\_history & 0.006 & Original \\
@@ -500,50 +516,6 @@ The most important contribution of the project lies in its methodological progre
 The final 7-fold CV workflow achieved a mean ROC-AUC of 0.72585 with a fold-level standard deviation of 0.00129. The modular source implementation includes fold-wise leakage-safe encoding and multi-seed ensembling for additional prediction stability. The top features --- family\_history\_diabetes (42.5\%), age\_family\_history (29.7\%), age\_bmi (6.8\%), and cardio\_risk\_score (5.0\%) --- demonstrate that both original predictors and carefully designed interaction features contribute meaningfully to the model's performance.
 
 The project's strongest conclusion is therefore not simply that XGBoost performed well, but that a strong tabular model must be paired with a validation strategy rigorous enough to justify that conclusion. The iterative progression from baseline to cross-validated pipeline --- with explicit model-family comparison (KNN-MLP, XGBoost, LightGBM), principled feature engineering, systematic fold-count comparison, and deliberate validation redesign --- provides a transferable template for structured tabular machine learning projects.
-
-\section*{Code Availability}
-
-The complete project code is organized as follows:
-
-\begin{lstlisting}[language=bash]
-machinelearning_project/
-├── data/                    # Dataset files
-├── notebooks/               # Jupyter notebooks
-│   ├── 01_eda.ipynb        # Exploratory Data Analysis
-│   ├── 02_baseline.ipynb   # Baseline models
-│   ├── 03_knn_mlp.ipynb    # KNN-MLP hybrid exploration
-│   ├── 04_xgb_lightgbm.ipynb # XGBoost vs LightGBM comparison
-│   ├── 05-10_*.ipynb       # XGBoost refinement experiments
-│   ├── 11_xgboost_cv.ipynb # Cross-validation implementation
-│   ├── 12_tail_test.ipynb  # Tail holdout analysis
-│   └── 13_fold_comparison.ipynb # 5/7/10-fold CV comparison
-├── src/                     # Python source code
-│   ├── __init__.py         # Package initialization
-│   ├── config.py           # Configuration and paths
-│   ├── features.py         # Feature engineering
-│   ├── preprocessing.py    # Data preprocessing
-│   ├── models.py           # Model training with CV
-│   ├── train_xgb_cv.py     # Main training script
-│   └── report_figures.py   # Report figure generator
-├── models/                  # Saved models
-├── submissions/             # Kaggle submission files
-├── logs/                    # Experiment logs
-├── report_figures/          # Generated report figures
-└── requirements.txt         # Python dependencies
-\end{lstlisting}
-
-To run the complete pipeline:
-
-\begin{lstlisting}[language=bash]
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the complete pipeline
-python -m src.train_xgb_cv
-
-# Generate report figures
-python -m src.report_figures
-\end{lstlisting}
 
 \section*{Acknowledgments}
 

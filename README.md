@@ -17,8 +17,8 @@ This project develops a systematic machine learning pipeline for predicting diab
 |--------|-------|
 | **7-Fold CV AUC** | 0.725852 ± 0.001294 |
 | **OOF AUC** | 0.725845 |
-| **Kaggle Public Score** | 0.6956 |
-| **Kaggle Private Score** | 0.6931 |
+| **Kaggle Public Score** | 0.69626 |
+| **Kaggle Private Score** | 0.69300 |
 
 ## 📁 Project Structure
 
@@ -37,6 +37,7 @@ machinelearning_project/
 │   ├── features.py                # Final engineered features
 │   ├── preprocessing.py           # Shared preprocessing helpers
 │   ├── models.py                  # CV training, baselines, model logic
+│   ├── train.py                   # Additional training entry point
 │   ├── train_xgb_cv.py            # Main training entry point
 │   ├── report_figures.py          # Final report figure generator
 │   ├── evaluate.py                # Optional evaluation helpers
@@ -49,34 +50,61 @@ machinelearning_project/
 │   ├── feature_importance.csv     # Final feature importance table
 │   ├── summary.json               # Fold AUCs, mean/std AUC, OOF AUC
 │   ├── tail_cutoff_comparison.*   # Tail-holdout comparison artifacts
-│   └── fold_count_comparison.*    # 5/7/10-fold comparison artifacts
+│   ├── fold_count_comparison.*    # 5/7/10-fold comparison artifacts
+│   ├── lightgbm_default_*         # Supporting LightGBM baseline artifacts
+│   └── 04-11_* / exp*_summary.*   # Historical experiment logs and summaries
 │
 ├── report_figures/                # Final report-ready figures from src/report_figures.py
+│   ├── figure_1_7fold_cv_aucs.(png/pdf)
+│   ├── figure_2_feature_importance.(png/pdf)
+│   ├── figure_3_feature_importance_pie.(png/pdf)
+│   ├── figure_4_roc_curve.(png/pdf)
+│   ├── figure_5_prediction_distribution.(png/pdf)
+│   ├── figure_6_auc_boxplot.(png/pdf)
+│   └── figure_7_kaggle_score.png
+│
+├── submissions/                   # Kaggle submission outputs
+│   ├── final_submission.csv
+│   ├── lightgbm_default.csv
+│   ├── xgboost_default.csv
+│   └── 04-11_* / 11_xgboost_cv_*  # Historical experiment submissions
+│
+├── notebooks/                     # EDA, model exploration, summaries, and report notebooks
+│   ├── 01_EDA.ipynb
+│   ├── 02.5_data_explore_report.md
+│   ├── 02_baseline.ipynb
+│   ├── 03_knn_mlp_hybrid.ipynb
+│   ├── 04_xgboost_default.ipynb
+│   ├── 04.5_lightgbm_default.ipynb
+│   ├── 05-10_*.ipynb
+│   ├── 10.5_conclusion_of_1-10.md
+│   ├── 11.5_summary_of_11.md
+│   ├── 11_xgboost_cv_final.ipynb
+│   ├── 12_tail_cutoff_comparison.ipynb
+│   ├── 13_fold_count_comparison.ipynb
+│   ├── 13.5_overall_experiment_summary.ipynb
+│   ├── 14_visualization.ipynb
+│   └── 14.5_modularize_report.md
+│
+├── models/                        # Final and archived intermediate models
+│   ├── xgb_cv_final/              # Saved XGBoost fold-model directory used by the CV pipeline
+│   ├── baseline_dt.pkl
+│   ├── xgboost_default.pkl
+│   ├── lightgbm_default.pkl
+│   └── 04-08_*                    # Historical experiment model files
+│
+├── figures/                       # Notebook-generated figures for analysis and report drafting
 │   ├── figure_1_7fold_cv_aucs.png
 │   ├── figure_2_feature_importance.png
 │   ├── figure_3_feature_importance_pie.png
 │   ├── figure_4_roc_curve.png
 │   ├── figure_5_prediction_distribution.png
 │   ├── figure_6_auc_boxplot.png
-│   └── kaggle_score.png
+│   └── legacy and notebook-specific PNG/PDF exports
 │
-├── submissions/                   # Kaggle submission outputs
-│   └── final_submission.csv
-│
-├── notebooks/                     # EDA, model exploration, and report notebooks
-│   ├── 01_EDA.ipynb
-│   ├── 02_baseline.ipynb
-│   ├── 03_knn_mlp_hybrid.ipynb
-│   ├── 04_xgboost_default.ipynb / 04.5_lightgbm_default.ipynb
-│   ├── 05-10_*.ipynb
-│   ├── 11_xgboost_cv_final.ipynb
-│   ├── 12_tail_cutoff_comparison.ipynb
-│   ├── 13_fold_count_comparison.ipynb / 13.5_overall_experiment_summary.ipynb
-│   └── 14_visualization.ipynb
-│
-├── models/                        # Archived intermediate models / old experiments
-├── figures/                       # Notebook-generated figures for analysis and report drafting
 └── reports/                       # Final report assets
+    ├── reports.tex
+    └── reports.pdf
 ```
 
 ## 📊 Data Exploration
@@ -87,8 +115,8 @@ machinelearning_project/
 |----------|-------|
 | Training samples | 700,000 |
 | Test samples | 300,000 |
-| Features | 26 |
-| Target distribution | 62.3% diabetic, 37.7% non-diabetic |
+| Columns in `train.csv` | 26 (24 predictors + `id` + target) |
+| Target distribution | 62.33% diabetic, 37.67% non-diabetic |
 
 ### Feature Correlations
 
@@ -98,7 +126,7 @@ machinelearning_project/
 | age | +0.161 |
 | systolic_bp | +0.107 |
 | bmi | +0.106 |
-| physical_activity | -0.170 |
+| physical_activity_minutes_per_week | -0.170 |
 
 ### Key Findings
 
@@ -118,6 +146,18 @@ machinelearning_project/
 2. **Decision Tree** (AUC = 0.6825)
    - Max depth = 5
    - Interpretable baseline
+
+### Early Alternative Exploration: KNN + MLP Hybrid
+
+Before fully committing to boosted tree models, the project also explored a small KNN / MLP branch in [03_knn_mlp_hybrid.ipynb](/Users/junhaohuang/Documents/Playground/DSAI4203_Machine_Learning_Project_Diabetes_Predictor-main/notebooks/03_knn_mlp_hybrid.ipynb). This notebook compared three simple alternatives under the same early-stage experimental setting:
+
+| Model | Validation AUC | Note |
+|-------|----------------|------|
+| KNN | 0.6447 | Distance-based baseline, sensitive to high-dimensional mixed-type features |
+| MLP | 0.6890 | Best result within this branch |
+| KNN + MLP Hybrid | 0.6763 | Simple probability-average blend |
+
+This comparison was useful because it tested a different model family before the project moved further into boosting. The outcome suggested that although the MLP was stronger than KNN, the hybrid branch still underperformed the later boosted-tree baselines. As a result, the main development path shifted toward XGBoost and LightGBM rather than neural-network or distance-based methods.
 
 ### Feature Engineering
 
@@ -216,11 +256,13 @@ def _encode_categorical_fold(X_train_raw, X_valid_raw, categorical_cols):
 
 | Plot | Description |
 |------|-------------|
+| Fold AUCs | Broken-axis view of 7-fold CV stability across folds |
+| Feature Importance | Top 15 features with importance scores |
+| Feature Importance Share | Top 5 feature-importance share |
 | ROC Curve | OOF predictions, AUC = 0.725845 |
-| Calibration Curve | Model calibration analysis |
-| Prediction Distribution | Class separation visualization |
-| Fold AUCs | 7-fold CV stability across folds |
-| Feature Importance | Top 15 features with scores |
+| Prediction Distribution | OOF prediction distribution by true class |
+| AUC Boxplot | Fold-wise spread around the 7-fold mean AUC |
+| Kaggle Result | Final public/private leaderboard score summary |
 
 ## 🔧 Requirements
 
@@ -240,14 +282,17 @@ lightgbm>=3.3.0
 |------------|-------------|-----|
 | 01 | Exploratory Data Analysis | - |
 | 02 | Decision Tree Baseline | 0.6825 |
-| 03 | XGBoost Default | 0.7192 |
-| 04 | XGBoost + 300 trees + class weight | 0.7255 |
-| 05 | XGBoost + 500 trees + depth tuning | 0.7264 |
-| 06 | XGBoost + Feature Engineering | 0.7251 |
-| 07 | XGBoost + Feature Selection | 0.7251 |
-| 08 | LightGBM | 0.7248 |
+| 03 | KNN / MLP / Hybrid exploration | 0.6890 (best MLP) |
+| 04 | Default XGBoost baseline | 0.7192 |
+| 04.5 | Default LightGBM baseline | 0.7248 |
+| 05 | XGBoost + 300 trees + class weight | 0.7255 |
+| 06-08 | XGBoost refinement and feature engineering | 0.7264 (best holdout) |
 | 09 | Ensemble (XGB + LGB) | 0.7256 |
+| 10 | Holdout-stage experiment comparison | Summary notebook |
 | **11** | **XGBoost + 7-fold CV + OOF** | **0.725845** |
+| 12 | Tail cutoff comparison | 0.6987 (preferred pct:0.10) |
+| 13 | 5-fold vs 7-fold vs 10-fold comparison | 0.725852 (preferred 7-fold) |
+| 14 | Final report visualizations | Figure generation notebook |
 
 ## 💡 Key Lessons Learned
 
